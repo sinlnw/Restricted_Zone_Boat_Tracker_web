@@ -22,7 +22,7 @@ if st.button("เพิ่มช่วงวันที่"):
         'start_date': datetime.now(),
         'end_date': datetime.now()
     })
-    st.session_state.drawn_polygons.append(None)  # Add empty placeholder
+    st.session_state.drawn_polygons.append(None)  
 
 drawing_options = {
     "polyline": False,
@@ -53,14 +53,14 @@ with date_ranges_container:
                 key=f"end_{idx}"
             )
         
-        with col3: # TODO: FIX
+        with col3: # TODO: change this button to show map at the bottom of the page
             if st.button("แสดง", key=f"draw_{idx}"):
                 if 'map_data' in locals() and map_data.get("last_active_drawing"):
                     st.session_state.drawn_polygons[idx] = map_data["last_active_drawing"]
         
         with col4:
             if st.button("ลบ", key=f"delete_{idx}"):
-                st.session_state.drawn_polygons.pop(idx)  # Remove polygon at same index
+                st.session_state.drawn_polygons.pop(idx)
                 st.session_state.date_ranges.pop(idx)
                 st.rerun()
         
@@ -85,7 +85,7 @@ with date_ranges_container:
         # Display map for this date range
         map_data = st_folium(m, width=800, height=600, key=f"map_{idx}")
         
-        # When saving drawn polygon
+        # When saving drawn polygon # TODO: add a button to save the polygon of the selected date range
         if map_data is not None and "all_drawings" in map_data:
             if map_data["all_drawings"]:
                 st.session_state.drawn_polygons[idx] = map_data["all_drawings"][-1]
