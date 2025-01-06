@@ -8,7 +8,7 @@ st.title("สร้างเขต")
 
 # Initialize map state if not exists
 if 'drawn_polygons' not in st.session_state:
-    st.session_state.drawn_polygons = {}
+    st.session_state.drawn_polygons = []
 
 # Initialize session state for date ranges if not exists
 if 'date_ranges' not in st.session_state:
@@ -22,6 +22,7 @@ if st.button("เพิ่มช่วงวันที่"):
         'start_date': datetime.now(),
         'end_date': datetime.now()
     })
+    st.session_state.drawn_polygons.append(None)  # Add empty placeholder
 
 drawing_options = {
     "polyline": False,
@@ -53,14 +54,13 @@ with date_ranges_container:
             )
         
         with col3: # TODO: FIX
-            if st.button("วาดพื้นที่", key=f"draw_{idx}"):
+            if st.button("แสดง", key=f"draw_{idx}"):
                 if 'map_data' in locals() and map_data.get("last_active_drawing"):
                     st.session_state.drawn_polygons[idx] = map_data["last_active_drawing"]
         
         with col4:
             if st.button("ลบ", key=f"delete_{idx}"):
-                if idx in st.session_state.drawn_polygons:
-                    del st.session_state.drawn_polygons[idx]
+                st.session_state.drawn_polygons.pop(idx)  # Remove polygon at same index
                 st.session_state.date_ranges.pop(idx)
                 st.rerun()
         
@@ -84,3 +84,9 @@ with date_ranges_container:
         
         # Display map for this date range
         map_data = st_folium(m, width=800, height=600, key=f"map_{idx}")
+        
+        # When saving drawn polygon
+        if map_data is not None and "all_drawings" in map_data:
+            if map_data["all_drawings"]:
+                st.session_state.drawn_polygons[idx] = map_data["all_drawings"][-1]
+                st.rerun()
