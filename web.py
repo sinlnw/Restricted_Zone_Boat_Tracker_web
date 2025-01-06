@@ -3,6 +3,8 @@ from calendar import month_abbr
 from datetime import datetime
 import folium
 from streamlit_folium import folium_static, st_folium
+START_LOCATION = [13.847332, 100.572258]
+st.title("สร้างเขต")
 
 # Initialize map state if not exists
 if 'drawn_polygons' not in st.session_state:
@@ -13,7 +15,7 @@ if 'date_ranges' not in st.session_state:
     st.session_state.date_ranges = []
 
 # Container for all date ranges
-date_ranges_container = st.container()
+date_ranges_container = st.container(border=True)
 # Add new date range button
 if st.button("เพิ่มช่วงวันที่"):
     st.session_state.date_ranges.append({
@@ -33,6 +35,7 @@ drawing_options = {
 # Display all date ranges with drawing buttons
 with date_ranges_container:
     for idx, date_range in enumerate(st.session_state.date_ranges):
+        # idx-th date_range 
         col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
         
         with col1:
@@ -49,9 +52,9 @@ with date_ranges_container:
                 key=f"end_{idx}"
             )
         
-        with col3:
+        with col3: # TODO: FIX
             if st.button("วาดพื้นที่", key=f"draw_{idx}"):
-                if map_data.get("last_active_drawing"):
+                if 'map_data' in locals() and map_data.get("last_active_drawing"):
                     st.session_state.drawn_polygons[idx] = map_data["last_active_drawing"]
         
         with col4:
@@ -66,7 +69,7 @@ with date_ranges_container:
         st.session_state.date_ranges[idx]['end_date'] = end_date
         
         # Create a new map for this date range
-        m = folium.Map(location=[13.7563, 100.5018], zoom_start=10)
+        m = folium.Map(location=START_LOCATION, zoom_start=15)
         draw = folium.plugins.Draw(
             export=True,
             position='topleft',
