@@ -3,32 +3,9 @@ from calendar import month_abbr
 from datetime import datetime
 import folium
 from streamlit_folium import folium_static, st_folium
+import json
 START_LOCATION = [13.847332, 100.572258]
 st.title("สร้างเขต")
-
-# Initialize map state if not exists
-if 'drawn_polygons' not in st.session_state:
-    st.session_state.drawn_polygons = []
-
-# Initialize session state for date ranges if not exists
-if 'date_ranges' not in st.session_state:
-    st.session_state.date_ranges = []
-
-# Initialize selected map index state
-if 'selected_map_idx' not in st.session_state:
-    st.session_state.selected_map_idx = None
-
-# Container for all date ranges
-date_ranges_container = st.container(border=True)
-# Add new date range button
-if st.button("เพิ่มช่วงวันที่"):
-    st.session_state.date_ranges.append({
-        'start_day': datetime.now().day,
-        'start_month': datetime.now().month,
-        'end_day': datetime.now().day,
-        'end_month': datetime.now().month
-    })
-    st.session_state.drawn_polygons.append(None)  
 
 drawing_options = {
     "polyline": False,
@@ -39,7 +16,29 @@ drawing_options = {
     "polygon": True
 }
 
-# Display all date ranges with drawing buttons
+# Initialize session state
+if 'drawn_polygons' not in st.session_state:
+    st.session_state.drawn_polygons = []
+
+if 'date_ranges' not in st.session_state:
+    st.session_state.date_ranges = []
+
+if 'selected_map_idx' not in st.session_state:
+    st.session_state.selected_map_idx = None
+
+# Container for all date ranges
+date_ranges_container = st.container(border=True)
+
+# add date range
+if st.button("เพิ่มช่วงวันที่"):
+    st.session_state.date_ranges.append({
+        'start_date': datetime.now(),
+        'end_date': datetime.now()
+    })
+    st.session_state.drawn_polygons.append(None)  
+
+
+# Display all date ranges
 with date_ranges_container:
     for idx, date_range in enumerate(st.session_state.date_ranges):
         # idx-th date_range 
@@ -70,18 +69,16 @@ with date_ranges_container:
                 st.session_state.date_ranges.pop(idx)
                 st.rerun()
         
-        # Update session state
-        st.session_state.date_ranges[idx]['start_day'] = start_date.day
-        st.session_state.date_ranges[idx]['start_month'] = start_date.month
-        st.session_state.date_ranges[idx]['end_day'] = end_date.day
-        st.session_state.date_ranges[idx]['end_month'] = end_date.month
+        # Update date
+        st.session_state.date_ranges[idx]['start_date'] = start_date
+        st.session_state.date_ranges[idx]['end_date'] = end_date
 
-# After the date ranges loop - show single map
+# show map to draw polygon
 if st.session_state.selected_map_idx is not None:
     st.divider()
     idx = st.session_state.selected_map_idx
     
-    # Create map
+  
     m = folium.Map(location=START_LOCATION, zoom_start=15)
     draw = folium.plugins.Draw(
         export=True,
@@ -100,10 +97,9 @@ if st.session_state.selected_map_idx is not None:
     st.subheader(f"วาดเขตของช่วงเวลา #{idx + 1}")
     map_data = st_folium(m, width=800, height=600, key=f"map_{idx}")
     
-    # Create two columns for buttons
     col1, col2, col3 = st.columns([0.15,0.1,0.75])
 
-    # Add save button in the first column
+    # save button for polygon
     with col1:
         if st.button("บันทึก"):
             # Save new/edited drawings
@@ -112,10 +108,58 @@ if st.session_state.selected_map_idx is not None:
                     st.session_state.drawn_polygons[idx] = map_data["all_drawings"]
                     st.rerun()
 
-    # Add clear button in the second column
+    # clear button for polygon
     with col2:
         if st.button("ล้าง"):
             st.session_state.drawn_polygons[idx] = None
             st.rerun()
 
     #st.write(st.session_state.drawn_polygons[idx])
+
+
+# file uploader for importing AREA.txt
+uploaded_file = st.file_uploader("Import AREA.txt", type="txt")
+if uploaded_file is not None:
+    # Read the file content
+    content = uploaded_file.read().decode("utf-8")
+    # Parse the JSON data
+    imported_data = json.loads(content)
+    
+    # Update date_ranges and drawn_polygons in session state
+    st.session_state.date_ranges = [
+        {
+            "start_date": datetime(datetime.now().year, item["start_month"], item["start_day"]),
+            "end_date": datetime(datetime.now().year, item["end_month"], item["end_day"])
+        }
+        for item in imported_data
+    ]
+    st.session_state.drawn_polygons = [item["all_drawings"] for item in imported_data]
+    st.rerun()
+
+# export button for exporting AREA.txt
+date_ranges = st.session_state.get('date_ranges', [])
+drawn_polygons = st.session_state.get('drawn_polygons', [])
+
+# Create a list to store paired date_ranges and drawn_polygons
+paired_data = []
+for idx in range(len(date_ranges)):
+    paired_data.append({
+        "start_day": date_ranges[idx]["start_date"].day,
+        "start_month": date_ranges[idx]["start_date"].month,
+        "end_day": date_ranges[idx]["end_date"].day,
+        "end_month": date_ranges[idx]["end_date"].month,
+        "all_drawings": drawn_polygons[idx]
+    })
+
+json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
+
+# Display the JSON string in the Streamlit app
+st.text_area("Exported JSON", json_data, height=300)
+
+# Optionally, provide a download button
+st.download_button(
+    label="ดาวน์โหลด ข้อมูลเขต",
+    data=json_data,
+    file_name="AREA.txt",
+    mime="application/json"
+)
