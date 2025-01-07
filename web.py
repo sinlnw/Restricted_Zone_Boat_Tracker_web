@@ -90,7 +90,7 @@ if st.session_state.selected_map_idx is not None:
     if len(st.session_state.drawn_polygons) > idx and st.session_state.drawn_polygons[idx]:
         folium.GeoJson(st.session_state.drawn_polygons[idx]).add_to(m)
     
-    # Display map and capture data
+    # Display map
     st.subheader(f"วาดเขตของช่วงเวลา #{idx + 1}")
     map_data = st_folium(m, width=800, height=600, key=f"map_{idx}")
     
@@ -99,3 +99,5 @@ if st.session_state.selected_map_idx is not None:
         if map_data["all_drawings"]:
             st.session_state.drawn_polygons[idx] = map_data["all_drawings"][-1]
             st.rerun()
+
+ 
