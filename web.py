@@ -23,8 +23,10 @@ date_ranges_container = st.container(border=True)
 # Add new date range button
 if st.button("เพิ่มช่วงวันที่"):
     st.session_state.date_ranges.append({
-        'start_date': datetime.now(),
-        'end_date': datetime.now()
+        'start_day': datetime.now().day,
+        'start_month': datetime.now().month,
+        'end_day': datetime.now().day,
+        'end_month': datetime.now().month
     })
     st.session_state.drawn_polygons.append(None)  
 
@@ -41,7 +43,7 @@ drawing_options = {
 with date_ranges_container:
     for idx, date_range in enumerate(st.session_state.date_ranges):
         # idx-th date_range 
-        col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+        col1, col2, col3, col4 = st.columns([2, 2, 1, 1],vertical_alignment="bottom")
         
         with col1:
             start_date = st.date_input(
@@ -69,8 +71,10 @@ with date_ranges_container:
                 st.rerun()
         
         # Update session state
-        st.session_state.date_ranges[idx]['start_date'] = start_date
-        st.session_state.date_ranges[idx]['end_date'] = end_date
+        st.session_state.date_ranges[idx]['start_day'] = start_date.day
+        st.session_state.date_ranges[idx]['start_month'] = start_date.month
+        st.session_state.date_ranges[idx]['end_day'] = end_date.day
+        st.session_state.date_ranges[idx]['end_month'] = end_date.month
 
 # After the date ranges loop - show single map
 if st.session_state.selected_map_idx is not None:
@@ -96,10 +100,22 @@ if st.session_state.selected_map_idx is not None:
     st.subheader(f"วาดเขตของช่วงเวลา #{idx + 1}")
     map_data = st_folium(m, width=800, height=600, key=f"map_{idx}")
     
-    # Add save button
-    if st.button("บันทึก"):
-        # Save new/edited drawings
-        if map_data is not None and "all_drawings" in map_data:
-            if map_data["all_drawings"]:
-                st.session_state.drawn_polygons[idx] = map_data["all_drawings"]
-                st.rerun()
+    # Create two columns for buttons
+    col1, col2, col3 = st.columns([0.15,0.1,0.75])
+
+    # Add save button in the first column
+    with col1:
+        if st.button("บันทึก"):
+            # Save new/edited drawings
+            if map_data is not None and "all_drawings" in map_data:
+                if map_data["all_drawings"]:
+                    st.session_state.drawn_polygons[idx] = map_data["all_drawings"]
+                    st.rerun()
+
+    # Add clear button in the second column
+    with col2:
+        if st.button("ล้าง"):
+            st.session_state.drawn_polygons[idx] = None
+            st.rerun()
+
+    #st.write(st.session_state.drawn_polygons[idx])
