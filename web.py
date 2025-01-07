@@ -88,16 +88,18 @@ if st.session_state.selected_map_idx is not None:
     
     # Show existing polygon if any
     if len(st.session_state.drawn_polygons) > idx and st.session_state.drawn_polygons[idx]:
-        folium.GeoJson(st.session_state.drawn_polygons[idx]).add_to(m)
-    
+        for polygon in st.session_state.drawn_polygons[idx]:
+            if 'geometry' in polygon:
+                folium.GeoJson(polygon['geometry']).add_to(m)
+                
     # Display map
     st.subheader(f"วาดเขตของช่วงเวลา #{idx + 1}")
     map_data = st_folium(m, width=800, height=600, key=f"map_{idx}")
     
-    # Save new drawings
-    if map_data is not None and "all_drawings" in map_data:
-        if map_data["all_drawings"]:
-            st.session_state.drawn_polygons[idx] = map_data["all_drawings"][-1]
-            st.rerun()
-
- 
+    # Add save button
+    if st.button("บันทึก"):
+        # Save new/edited drawings
+        if map_data is not None and "all_drawings" in map_data:
+            if map_data["all_drawings"]:
+                st.session_state.drawn_polygons[idx] = map_data["all_drawings"]
+                st.rerun()
