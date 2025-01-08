@@ -8,6 +8,10 @@ if 'date_ranges' not in st.session_state:
 if 'all_areas' not in st.session_state:
     st.session_state.all_areas = []
 
+boat_data = { 1:"เรือ 1"}
+
+st.title("ประวัติตำแหน่ง")
+
 # Dialog for importing AREA.txt
 @st.dialog("นำเข้าข้อมูลเขต")
 def upload_file():
@@ -41,28 +45,35 @@ if st.button("นำเข้าข้อมูลเขต"):
     upload_file()
 
 
+def display_areas_data():
+    date_ranges = st.session_state.get('date_ranges', [])
+    all_areas = st.session_state.get('all_areas', [])
 
-date_ranges = st.session_state.get('date_ranges', [])
-all_areas = st.session_state.get('all_areas', [])
+    # Create a list to store paired date_ranges and drawn_polygons
+    if date_ranges and all_areas:
+        paired_data = []
+        for idx in range(len(date_ranges)):
+            paired_data.append({
+                "start_day": date_ranges[idx]["start_day"],
+                "start_month": date_ranges[idx]["start_month"],
+                "end_day": date_ranges[idx]["end_day"],
+                "end_month": date_ranges[idx]["end_month"],
 
-# Create a list to store paired date_ranges and drawn_polygons
-if date_ranges and all_areas:
-    paired_data = []
-    for idx in range(len(date_ranges)):
-        paired_data.append({
-            "start_day": date_ranges[idx]["start_day"],
-            "start_month": date_ranges[idx]["start_month"],
-            "end_day": date_ranges[idx]["end_day"],
-            "end_month": date_ranges[idx]["end_month"],
+                # "start_day": date_ranges[idx]["start_date"].day,
+                # "start_month": date_ranges[idx]["start_date"].month,
+                # "end_day": date_ranges[idx]["end_date"].day,
+                # "end_month": date_ranges[idx]["end_date"].month,
+                "all_drawings": all_areas[idx]
+            })
 
-            # "start_day": date_ranges[idx]["start_date"].day,
-            # "start_month": date_ranges[idx]["start_date"].month,
-            # "end_day": date_ranges[idx]["end_date"].day,
-            # "end_month": date_ranges[idx]["end_date"].month,
-            "all_drawings": all_areas[idx]
-        })
+        json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
+        st.text_area("ข้อมูลเขต", json_data, height=300)
 
-    json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
-    st.text_area("ข้อมูลเขต", json_data, height=300)
+display_areas_data()
 
 
+col1, col2 = st.columns([0.2, 0.8])
+
+with col1:
+    st.selectbox("เลือกเรือ", options=list(boat_data.values()))
+with col2:
