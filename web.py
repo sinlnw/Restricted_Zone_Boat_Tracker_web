@@ -3,6 +3,7 @@ from calendar import month_abbr
 from datetime import datetime
 import folium
 from streamlit_folium import folium_static, st_folium
+from calendar import month_name, monthrange
 import json
 START_LOCATION = [13.847332, 100.572258]
 st.title("สร้างเขต")
@@ -34,30 +35,54 @@ if st.button("เพิ่มช่วงวันที่"):
     st.session_state.date_ranges.append({
         'start_date': datetime.now(),
         'end_date': datetime.now(),
+        'start_day':datetime.now().day,
+        'start_month':datetime.now().month,
+        'end_day':datetime.now().day,
+        'end_month':datetime.now().month
     })
     st.session_state.drawn_polygons.append(None)  
 
+
+months = list(month_name)[1:]
+# Function to get the number of days in a given month and year
+def get_days_in_month(month, year=2023):
+    month_idx = list(month_name).index(month)
+    return list(range(1, monthrange(year, month_idx)[1] + 1))
 
 # Display all date ranges
 with date_ranges_container:
     for idx, date_range in enumerate(st.session_state.date_ranges):
         # idx-th date_range 
         col1, col2, col3, col4 = st.columns([2, 2, 1.05, 1],vertical_alignment="bottom")
-        
         with col1:
-            start_date = st.date_input(
-                f"วันที่เริ่มต้น #{idx + 1}",
-                value=date_range['start_date'],
-                key=f"start_{idx}"
+            start_month = st.selectbox(
+            f"เดือนเริ่มต้น #{idx + 1}",
+            options=months,
+            index=date_range['start_month'] - 1,
+            key=f"start_month_{idx}"
             )
+            start_day = st.selectbox(
+            f"วันที่เริ่มต้น #{idx + 1}",
+            options=get_days_in_month(start_month),
+            index=date_range['start_day'] - 1,
+            key=f"start_day_{idx}"
+            )
+            
         
         with col2:
-            end_date = st.date_input(
-                f"วันที่สิ้นสุด #{idx + 1}",
-                value=date_range['end_date'],
-                key=f"end_{idx}"
+            end_month = st.selectbox(
+            f"เดือนสิ้นสุด #{idx + 1}",
+            options=months,
+            index=date_range['end_month'] - 1,
+            key=f"end_month_{idx}"
             )
-        
+            end_day = st.selectbox(
+            f"วันที่สิ้นสุด #{idx + 1}",
+            options=get_days_in_month(end_month),
+            index=date_range['end_day'] - 1,
+            key=f"end_day_{idx}"
+            )
+           
         with col3:
             if st.button("แสดงแผนที่", key=f"show_{idx}"):
                 st.session_state.selected_map_idx = idx if st.session_state.selected_map_idx != idx else None
@@ -70,8 +95,13 @@ with date_ranges_container:
                 st.rerun()
         
         # Update date
-        st.session_state.date_ranges[idx]['start_date'] = start_date
-        st.session_state.date_ranges[idx]['end_date'] = end_date
+        #st.session_state.date_ranges[idx]['start_date'] = start_date
+        #st.session_state.date_ranges[idx]['end_date'] = end_date
+        st.session_state.date_ranges[idx]['start_day'] = start_day
+        st.session_state.date_ranges[idx]['start_month'] = list(month_name).index(start_month)
+        st.session_state.date_ranges[idx]['end_day'] = end_day
+        st.session_state.date_ranges[idx]['end_month'] = list(month_name).index(end_month)
+        st.divider()
 
 # show map to draw polygon
 if st.session_state.selected_map_idx is not None:
@@ -131,6 +161,10 @@ def upload_file():
             # Update date_ranges and drawn_polygons in session state
             st.session_state.date_ranges = [
                 {
+                    "start_day": item["start_day"],
+                    "start_month": item["start_month"],
+                    "end_day": item["end_day"],
+                    "end_month": item["end_month"],
                     "start_date": datetime(datetime.now().year, item["start_month"], item["start_day"]),
                     "end_date": datetime(datetime.now().year, item["end_month"], item["end_day"])
                 }
@@ -154,10 +188,15 @@ drawn_polygons = st.session_state.get('drawn_polygons', [])
 paired_data = []
 for idx in range(len(date_ranges)):
     paired_data.append({
-        "start_day": date_ranges[idx]["start_date"].day,
-        "start_month": date_ranges[idx]["start_date"].month,
-        "end_day": date_ranges[idx]["end_date"].day,
-        "end_month": date_ranges[idx]["end_date"].month,
+        "start_day": date_ranges[idx]["start_day"],
+        "start_month": date_ranges[idx]["start_month"],
+        "end_day": date_ranges[idx]["end_day"],
+        "end_month": date_ranges[idx]["end_month"],
+
+        # "start_day": date_ranges[idx]["start_date"].day,
+        # "start_month": date_ranges[idx]["start_date"].month,
+        # "end_day": date_ranges[idx]["end_date"].day,
+        # "end_month": date_ranges[idx]["end_date"].month,
         "all_drawings": drawn_polygons[idx]
     })
 
@@ -178,26 +217,3 @@ st.download_button(
 )
 
 
-
-# Add 4 selectboxes and 2 buttons horizontally
-col1, col2, col3, col4, col5, col6 = st.columns([2,2,2,2,1,1])
-
-with col1:
-    option1 = st.selectbox('Select Option 1', ['Option A', 'Option B', 'Option C'])
-
-with col2:
-    option2 = st.selectbox('Select Option 2', ['Option A', 'Option B', 'Option C'])
-
-with col3:
-    option3 = st.selectbox('Select Option 3', ['Option A', 'Option B', 'Option C'])
-
-with col4:
-    option4 = st.selectbox('Select Option 4', ['Option A', 'Option B', 'Option C'])
-
-with col5:
-    if st.button('Button 1'):
-        st.write('Button 1 clicked')
-
-with col6:
-    if st.button('Button 2'):
-        st.write('Button 2 clicked')
