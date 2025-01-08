@@ -142,9 +142,7 @@ def upload_file():
         if st.button("ปิด"):
             st.rerun()
 
-# Button to open dialog for importing AREA.txt
-if st.button("นำเข้าข้อมูลเขต"):
-    upload_file()
+
 
 
 
@@ -167,7 +165,11 @@ json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
 
 st.text_area("ข้อมูลเขต", json_data, height=300)
 
-# Optionally, provide a download button
+# Button to open dialog for importing AREA.txt
+if st.button("นำเข้าข้อมูลเขต"):
+    upload_file()
+
+# download button for AREA file
 st.download_button(
     label="ดาวน์โหลด ข้อมูลเขต",
     data=json_data,
