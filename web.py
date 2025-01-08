@@ -33,7 +33,7 @@ date_ranges_container = st.container(border=True)
 if st.button("เพิ่มช่วงวันที่"):
     st.session_state.date_ranges.append({
         'start_date': datetime.now(),
-        'end_date': datetime.now()
+        'end_date': datetime.now(),
     })
     st.session_state.drawn_polygons.append(None)  
 
@@ -42,7 +42,7 @@ if st.button("เพิ่มช่วงวันที่"):
 with date_ranges_container:
     for idx, date_range in enumerate(st.session_state.date_ranges):
         # idx-th date_range 
-        col1, col2, col3, col4 = st.columns([2, 2, 1, 1],vertical_alignment="bottom")
+        col1, col2, col3, col4 = st.columns([2, 2, 1.05, 1],vertical_alignment="bottom")
         
         with col1:
             start_date = st.date_input(
@@ -176,3 +176,28 @@ st.download_button(
     file_name="AREA.txt",
     mime="application/json"
 )
+
+
+
+# Add 4 selectboxes and 2 buttons horizontally
+col1, col2, col3, col4, col5, col6 = st.columns([2,2,2,2,1,1])
+
+with col1:
+    option1 = st.selectbox('Select Option 1', ['Option A', 'Option B', 'Option C'])
+
+with col2:
+    option2 = st.selectbox('Select Option 2', ['Option A', 'Option B', 'Option C'])
+
+with col3:
+    option3 = st.selectbox('Select Option 3', ['Option A', 'Option B', 'Option C'])
+
+with col4:
+    option4 = st.selectbox('Select Option 4', ['Option A', 'Option B', 'Option C'])
+
+with col5:
+    if st.button('Button 1'):
+        st.write('Button 1 clicked')
+
+with col6:
+    if st.button('Button 2'):
+        st.write('Button 2 clicked')
