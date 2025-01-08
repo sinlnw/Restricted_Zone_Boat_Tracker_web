@@ -116,34 +116,36 @@ if st.session_state.selected_map_idx is not None:
 
     #st.write(st.session_state.drawn_polygons[idx])
 
+
 # Dialog for importing AREA.txt
 @st.dialog("นำเข้าข้อมูลเขต")
 def upload_file():
     uploaded_file = st.file_uploader("Import AREA.txt", type="txt")
-    if st.button("summit") and uploaded_file is not None:
-        # Read the file content
-        content = uploaded_file.read().decode("utf-8")
-        # Parse the JSON data
-        imported_data = json.loads(content)
-        
-        # Update date_ranges and drawn_polygons in session state
-        st.session_state.date_ranges = [
-            {
-                "start_date": datetime(datetime.now().year, item["start_month"], item["start_day"]),
-                "end_date": datetime(datetime.now().year, item["end_month"], item["end_day"])
-            }
-            for item in imported_data
-        ]
-        st.session_state.drawn_polygons = [item["all_drawings"] for item in imported_data]
-        st.session_state.show_import_dialog = False
-        st.rerun()
-
-    if st.button("Close"):
-        st.rerun()
+    col1, col2, col3 = st.columns([0.2,0.2,0.6])
+    with col1:
+        if st.button("ยืนยัน") and uploaded_file is not None:
+            # Read the file content
+            content = uploaded_file.read().decode("utf-8")
+            imported_data = json.loads(content)
+            
+            # Update date_ranges and drawn_polygons in session state
+            st.session_state.date_ranges = [
+                {
+                    "start_date": datetime(datetime.now().year, item["start_month"], item["start_day"]),
+                    "end_date": datetime(datetime.now().year, item["end_month"], item["end_day"])
+                }
+                for item in imported_data
+            ]
+            st.session_state.drawn_polygons = [item["all_drawings"] for item in imported_data]
+            st.rerun()
+    with col2:
+        if st.button("ปิด"):
+            st.rerun()
 
 # Button to open dialog for importing AREA.txt
-if st.button("Import AREA.txt"):
+if st.button("นำเข้าข้อมูลเขต"):
     upload_file()
+
 
 
 # export button for exporting AREA.txt
@@ -163,8 +165,7 @@ for idx in range(len(date_ranges)):
 
 json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
 
-# Display the JSON string in the Streamlit app
-st.text_area("Exported JSON", json_data, height=300)
+st.text_area("ข้อมูลเขต", json_data, height=300)
 
 # Optionally, provide a download button
 st.download_button(
