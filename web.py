@@ -6,6 +6,7 @@ from streamlit_folium import folium_static, st_folium
 from calendar import month_name, monthrange
 import json
 START_LOCATION = [13.847332, 100.572258]
+#TODO: might save current center and zoom level
 st.title("สร้างเขต")
 
 drawing_options = {
