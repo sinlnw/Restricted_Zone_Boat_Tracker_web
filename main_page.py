@@ -5,5 +5,5 @@ def main_page():
     st.title("Plase select a page on the left")
 
 
-pg = st.navigation([st.Page(main_page,title='หน้าหลัก'), st.Page("web.py", title='สร้างเขต')])
+pg = st.navigation([st.Page(main_page,title='หน้าหลัก'), st.Page("web.py", title='สร้างเขต'),st.Page("view_tracking_page.py", title='ประวัติตำแหน่ง')])
 pg.run()
