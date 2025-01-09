@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 from datetime import datetime
+import pymongo
 
 if 'date_ranges' not in st.session_state:
     st.session_state.date_ranges = []
@@ -41,10 +42,6 @@ def upload_file():
         if st.button("ปิด"):
             st.rerun()
 
-if st.button("นำเข้าข้อมูลเขต"):
-    upload_file()
-
-
 def display_areas_data():
     date_ranges = st.session_state.get('date_ranges', [])
     all_areas = st.session_state.get('all_areas', [])
@@ -68,6 +65,29 @@ def display_areas_data():
 
         json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
         st.text_area("ข้อมูลเขต", json_data, height=300)
+
+@st.cache_resource
+def init_connection():
+    return pymongo.MongoClient(**st.secrets["mongo"])
+
+
+
+# Pull data from the collection.
+# Uses st.cache_data to only rerun when the query changes or after 10 min.
+@st.cache_data(ttl=600)
+def get_data():
+    db = client["test"]
+    items = db["coordinate"].find()
+    items = list(items)  # make hashable for st.cache_data
+    return items
+
+client = init_connection()
+items = get_data()
+
+if st.button("นำเข้าข้อมูลเขต"):
+    upload_file()
+
+
 
 display_areas_data()
 
