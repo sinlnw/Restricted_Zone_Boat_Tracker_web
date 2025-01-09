@@ -2,18 +2,21 @@ import streamlit as st
 import json
 from datetime import datetime
 import pymongo
+import folium
+from streamlit_folium import st_folium
 
 boat_data = {"เรือ 1": 1}
 
 if "date_ranges" not in st.session_state:
     st.session_state.date_ranges = []
-
 if "all_areas" not in st.session_state:
     st.session_state.all_areas = []
 if "filter_date_range" not in st.session_state:
     st.session_state.filter_date_range = (datetime.now(), datetime.now())
 if "filter_boat" not in st.session_state:
     st.session_state.filter_boat = list(boat_data.keys())[0]
+if "gps_coords" not in st.session_state:
+    st.session_state.gps_coords = []
 
 
 example_gps_coords = {
@@ -30,6 +33,9 @@ example_gps_coords = {
     "ttf": 78.976,
     "rssi": -70,
 }
+START_LOCATION = [13.847332, 100.572258]
+ZOOM_START = 15
+
 st.title("ประวัติตำแหน่ง")
 
 
@@ -107,16 +113,50 @@ def get_data(filter_date_range: tuple[datetime], device: str):
     start_date, end_date = filter_date_range
     db = client["test"]
     query_filter = {
-        "recorded_time": {"$gte": datetime.combine(start_date, datetime.min.time()), "$lte": datetime.combine(end_date, datetime.max.time())},
+        "recorded_time": {
+            "$gte": datetime.combine(start_date, datetime.min.time()),
+            "$lte": datetime.combine(end_date, datetime.max.time()),
+        },
         "device": boat_data[device],
     }
     projection = {"recorded_time": 1, "device": 1, "lat": 1, "lon": 1, "vbat": 1}
-    items = db["coordinate"].find(filter=query_filter, projection=projection).sort("recorded_time", pymongo.ASCENDING)
-    
+    items = (
+        db["coordinate"]
+        .find(filter=query_filter, projection=projection)
+        .sort("recorded_time", pymongo.ASCENDING)
+    )
 
     items = list(items)  # make hashable for st.cache_data
 
     return items
+
+
+def plot_gps_coords(gps_coords):
+    # Create a Folium map
+    m = folium.Map(location=START_LOCATION, zoom_start=ZOOM_START)
+
+    # Add markers to the map
+    for coord in gps_coords:
+        #continue
+        folium.CircleMarker(
+            location=[coord["lat"], coord["lon"]],
+            radius=3,  # Size of the dot
+            color="blue",
+            fill=True,
+            fill_color="blue",
+            popup=f"Recorded Time: {coord['recorded_time']}<br>Device: {coord['device']}",
+        ).add_to(m)
+
+    # Add a PolyLine to connect the points
+    if gps_coords:
+        folium.PolyLine(
+            locations=[[coord["lat"], coord["lon"]] for coord in gps_coords],
+            color="blue",
+            weight=2.5,
+            opacity=1,
+        ).add_to(m)
+
+    return m
 
 
 client = init_connection()
@@ -132,24 +172,42 @@ display_areas_data()
 col1, col2 = st.columns([0.2, 0.8])
 
 with col1:
-    filter_boat = st.selectbox("เลือกเรือ", index=list(boat_data.keys()).index(st.session_state.filter_boat), options=list(boat_data.keys()))
+    filter_boat = st.selectbox(
+        "เลือกเรือ",
+        index=list(boat_data.keys()).index(st.session_state.filter_boat),
+        options=list(boat_data.keys()),
+    )
     st.session_state.filter_boat = filter_boat
 with col2:
     filter_date_range = st.date_input(
-        "เลือกช่วงเวลา", 
-        value=st.session_state.filter_date_range if 'filter_date_range' in st.session_state else (datetime.now(), datetime.now()), 
+        "เลือกช่วงเวลา",
+        value=(
+            st.session_state.filter_date_range
+            if "filter_date_range" in st.session_state
+            else (datetime.now(), datetime.now())
+        ),
         format="DD/MM/YYYY",
-        key="date_range_picker"
+        key="date_range_picker",
     )
     if len(filter_date_range) == 2:
         st.session_state.filter_date_range = filter_date_range
-        #st.rerun()
+        # st.rerun()
 
 
 if st.button("ดึงข้อมูล") and filter_boat and filter_date_range:
     if len(filter_date_range) != 2:
         st.warning("กรุณาเลือกช่วงเวลาให้ถูกต้อง")
         st.stop()
-    gps_coords = get_data(filter_date_range=filter_date_range, device=filter_boat)
-    st.write(gps_coords)
-    
+    st.session_state.gps_coords = get_data(
+        filter_date_range=filter_date_range, device=filter_boat
+    )
+
+ 
+    # Plot GPS coordinates on a map
+
+
+# Plot GPS coordinates on a map
+
+m = plot_gps_coords(st.session_state.gps_coords)
+st_folium(m, width=800, height=600)
+

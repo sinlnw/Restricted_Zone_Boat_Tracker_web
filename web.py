@@ -20,7 +20,7 @@ drawing_options = {
 
 # Initialize session state
 if 'drawn_polygons' not in st.session_state:
-    st.session_state.drawn_polygons = []
+    st.session_state.drawn_polygons = [] # the format is the same as all_drawings in st_folium
 
 if 'date_ranges' not in st.session_state:
     st.session_state.date_ranges = []
