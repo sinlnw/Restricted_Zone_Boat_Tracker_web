@@ -16,7 +16,7 @@ if "filter_boat" not in st.session_state:
     st.session_state.filter_boat = list(boat_data.keys())[0]
 
 
-example_coordinate = {
+example_gps_coords = {
     "_id": {"$oid": "6777a8dadabd12fbd3985eac"},
     "recorded_time": {"$date": "2024-12-13T10:12:28.000Z"},
     "received_time": {"$date": "2025-01-03T16:07:37.368Z"},
@@ -136,11 +136,20 @@ with col1:
     st.session_state.filter_boat = filter_boat
 with col2:
     filter_date_range = st.date_input(
-        "เลือกช่วงเวลา", st.session_state.filter_date_range, format="DD/MM/YYYY"
+        "เลือกช่วงเวลา", 
+        value=st.session_state.filter_date_range if 'filter_date_range' in st.session_state else (datetime.now(), datetime.now()), 
+        format="DD/MM/YYYY",
+        key="date_range_picker"
     )
-    st.session_state.filter_date_range = filter_date_range
+    if len(filter_date_range) == 2:
+        st.session_state.filter_date_range = filter_date_range
+        #st.rerun()
+
+
 if st.button("ดึงข้อมูล") and filter_boat and filter_date_range:
-    items = get_data(filter_date_range=filter_date_range, device=filter_boat)
-    st.write(items)
+    if len(filter_date_range) != 2:
+        st.warning("กรุณาเลือกช่วงเวลาให้ถูกต้อง")
+        st.stop()
+    gps_coords = get_data(filter_date_range=filter_date_range, device=filter_boat)
+    st.write(gps_coords)
     
-st.write(filter_date_range)
