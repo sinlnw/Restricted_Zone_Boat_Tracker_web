@@ -4,7 +4,7 @@ from datetime import datetime
 import pymongo
 import folium
 from streamlit_folium import st_folium
-
+from folium import IFrame
 boat_data = {"เรือ 1": 1}
 
 if "date_ranges" not in st.session_state:
@@ -137,14 +137,24 @@ def plot_gps_coords(gps_coords):
 
     # Add markers to the map
     for coord in gps_coords:
-        #continue
+        popup_content = f"""
+        <div style="width: 200px;">
+            <b>Recorded Time:</b> {coord['recorded_time']}<br>
+            <b>Lat:</b> {coord['lat']}<br>
+            <b>Lon:</b> {coord['lon']}
+        </div>
+        """
+        tooltip_content = f"Recorded Time: {coord['recorded_time']}<br>Lat: {coord['lat']}<br>Lon: {coord['lon']}"
+        iframe = IFrame(popup_content, width=210, height=100)
+        popup = folium.Popup(iframe, max_width=300)
         folium.CircleMarker(
             location=[coord["lat"], coord["lon"]],
             radius=3,  # Size of the dot
             color="blue",
             fill=True,
             fill_color="blue",
-            popup=f"Recorded Time: {coord['recorded_time']}<br>Device: {coord['device']}",
+            popup=popup,
+            tooltip=tooltip_content,
         ).add_to(m)
 
     # Add a PolyLine to connect the points
@@ -210,4 +220,3 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
 
 m = plot_gps_coords(st.session_state.gps_coords)
 st_folium(m, width=800, height=600)
-
