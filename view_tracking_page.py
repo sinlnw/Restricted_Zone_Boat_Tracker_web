@@ -77,3 +77,6 @@ col1, col2 = st.columns([0.2, 0.8])
 with col1:
     st.selectbox("เลือกเรือ", options=list(boat_data.values()))
 with col2:
+    filter_date = st.date_input("เลือกช่วงเวลา", (datetime.now(), datetime.now()),format="DD/MM/YYYY")
+
+st.write(filter_date)
