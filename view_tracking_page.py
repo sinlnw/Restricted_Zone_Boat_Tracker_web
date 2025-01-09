@@ -3,27 +3,47 @@ import json
 from datetime import datetime
 import pymongo
 
-if 'date_ranges' not in st.session_state:
+boat_data = {"เรือ 1": 1}
+
+if "date_ranges" not in st.session_state:
     st.session_state.date_ranges = []
 
-if 'all_areas' not in st.session_state:
+if "all_areas" not in st.session_state:
     st.session_state.all_areas = []
+if "filter_date_range" not in st.session_state:
+    st.session_state.filter_date_range = (datetime.now(), datetime.now())
+if "filter_boat" not in st.session_state:
+    st.session_state.filter_boat = list(boat_data.keys())[0]
 
-boat_data = { 1:"เรือ 1"}
 
+example_coordinate = {
+    "_id": {"$oid": "6777a8dadabd12fbd3985eac"},
+    "recorded_time": {"$date": "2024-12-13T10:12:28.000Z"},
+    "received_time": {"$date": "2025-01-03T16:07:37.368Z"},
+    "device": 1,
+    "lat": 13.8468624,
+    "lon": 100.5686336,
+    "vbat": 2.81,
+    "quality": 1,
+    "satellites": 3,
+    "temperature": 231,
+    "ttf": 78.976,
+    "rssi": -70,
+}
 st.title("ประวัติตำแหน่ง")
+
 
 # Dialog for importing AREA.txt
 @st.dialog("นำเข้าข้อมูลเขต")
 def upload_file():
     uploaded_file = st.file_uploader("Import AREA.txt", type="txt")
-    col1, col2, col3 = st.columns([0.2,0.2,0.6])
+    col1, col2, col3 = st.columns([0.2, 0.2, 0.6])
     with col1:
         if st.button("ยืนยัน") and uploaded_file is not None:
             # Read the file content
             content = uploaded_file.read().decode("utf-8")
             imported_data = json.loads(content)
-            
+
             # Update date_ranges and drawn_polygons in session state
             st.session_state.date_ranges = [
                 {
@@ -31,62 +51,79 @@ def upload_file():
                     "start_month": item["start_month"],
                     "end_day": item["end_day"],
                     "end_month": item["end_month"],
-                    "start_date": datetime(datetime.now().year, item["start_month"], item["start_day"]),
-                    "end_date": datetime(datetime.now().year, item["end_month"], item["end_day"])
+                    "start_date": datetime(
+                        datetime.now().year, item["start_month"], item["start_day"]
+                    ),
+                    "end_date": datetime(
+                        datetime.now().year, item["end_month"], item["end_day"]
+                    ),
                 }
                 for item in imported_data
             ]
-            st.session_state.all_areas = [item["all_drawings"] for item in imported_data]
+            st.session_state.all_areas = [
+                item["all_drawings"] for item in imported_data
+            ]
             st.rerun()
     with col2:
         if st.button("ปิด"):
             st.rerun()
 
+
 def display_areas_data():
-    date_ranges = st.session_state.get('date_ranges', [])
-    all_areas = st.session_state.get('all_areas', [])
+    date_ranges = st.session_state.get("date_ranges", [])
+    all_areas = st.session_state.get("all_areas", [])
 
     # Create a list to store paired date_ranges and drawn_polygons
     if date_ranges and all_areas:
         paired_data = []
         for idx in range(len(date_ranges)):
-            paired_data.append({
-                "start_day": date_ranges[idx]["start_day"],
-                "start_month": date_ranges[idx]["start_month"],
-                "end_day": date_ranges[idx]["end_day"],
-                "end_month": date_ranges[idx]["end_month"],
-
-                # "start_day": date_ranges[idx]["start_date"].day,
-                # "start_month": date_ranges[idx]["start_date"].month,
-                # "end_day": date_ranges[idx]["end_date"].day,
-                # "end_month": date_ranges[idx]["end_date"].month,
-                "all_drawings": all_areas[idx]
-            })
+            paired_data.append(
+                {
+                    "start_day": date_ranges[idx]["start_day"],
+                    "start_month": date_ranges[idx]["start_month"],
+                    "end_day": date_ranges[idx]["end_day"],
+                    "end_month": date_ranges[idx]["end_month"],
+                    # "start_day": date_ranges[idx]["start_date"].day,
+                    # "start_month": date_ranges[idx]["start_date"].month,
+                    # "end_day": date_ranges[idx]["end_date"].day,
+                    # "end_month": date_ranges[idx]["end_date"].month,
+                    "all_drawings": all_areas[idx],
+                }
+            )
 
         json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
         st.text_area("ข้อมูลเขต", json_data, height=300)
+
 
 @st.cache_resource
 def init_connection():
     return pymongo.MongoClient(**st.secrets["mongo"])
 
 
-
 # Pull data from the collection.
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
 @st.cache_data(ttl=600)
-def get_data():
+def get_data(filter_date_range: tuple[datetime], device: str):
+    start_date, end_date = filter_date_range
     db = client["test"]
-    items = db["coordinate"].find()
+    query_filter = {
+        "recorded_time": {"$gte": datetime.combine(start_date, datetime.min.time()), "$lte": datetime.combine(end_date, datetime.max.time())},
+        "device": boat_data[device],
+    }
+    projection = {"recorded_time": 1, "device": 1, "lat": 1, "lon": 1, "vbat": 1}
+    items = db["coordinate"].find(filter=query_filter, projection=projection).sort("recorded_time", pymongo.ASCENDING)
+    
+
     items = list(items)  # make hashable for st.cache_data
+
     return items
 
+
 client = init_connection()
-items = get_data()
+
 
 if st.button("นำเข้าข้อมูลเขต"):
     upload_file()
-
 
 
 display_areas_data()
@@ -95,8 +132,15 @@ display_areas_data()
 col1, col2 = st.columns([0.2, 0.8])
 
 with col1:
-    st.selectbox("เลือกเรือ", options=list(boat_data.values()))
+    filter_boat = st.selectbox("เลือกเรือ", index=list(boat_data.keys()).index(st.session_state.filter_boat), options=list(boat_data.keys()))
+    st.session_state.filter_boat = filter_boat
 with col2:
-    filter_date = st.date_input("เลือกช่วงเวลา", (datetime.now(), datetime.now()),format="DD/MM/YYYY")
-
-st.write(filter_date)
+    filter_date_range = st.date_input(
+        "เลือกช่วงเวลา", st.session_state.filter_date_range, format="DD/MM/YYYY"
+    )
+    st.session_state.filter_date_range = filter_date_range
+if st.button("ดึงข้อมูล") and filter_boat and filter_date_range:
+    items = get_data(filter_date_range=filter_date_range, device=filter_boat)
+    st.write(items)
+    
+st.write(filter_date_range)
