@@ -5,12 +5,15 @@ import pymongo
 import folium
 from streamlit_folium import st_folium
 from folium import IFrame
+
 boat_data = {"เรือ 1": 1}
 
 if "date_ranges" not in st.session_state:
     st.session_state.date_ranges = []
 if "all_areas" not in st.session_state:
     st.session_state.all_areas = []
+if "active_area" not in st.session_state:
+    st.session_state.active_area = []  # true if in date range
 if "filter_date_range" not in st.session_state:
     st.session_state.filter_date_range = (datetime.now(), datetime.now())
 if "filter_boat" not in st.session_state:
@@ -33,6 +36,47 @@ example_gps_coords = {
     "ttf": 78.976,
     "rssi": -70,
 }
+example_date_ranges = [
+    {"start_day": 8, "start_month": 9, "end_day": 8, "end_month": 10},
+    {"start_day": 8, "start_month": 1, "end_day": 8, "end_month": 1},
+]
+example_all_areas = [
+    [
+        {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [100.566273, 13.849372],
+                        [100.572281, 13.849872],
+                        [100.572667, 13.846247],
+                        [100.565286, 13.842539],
+                        [100.566273, 13.849372],
+                    ]
+                ],
+            },
+        }
+    ],
+    [
+        {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [100.577173, 13.853872],
+                        [100.566359, 13.845872],
+                        [100.578761, 13.84533],
+                        [100.577173, 13.853872],
+                    ]
+                ],
+            },
+        }
+    ],
+]
 START_LOCATION = [13.847332, 100.572258]
 ZOOM_START = 15
 
@@ -57,18 +101,13 @@ def upload_file():
                     "start_month": item["start_month"],
                     "end_day": item["end_day"],
                     "end_month": item["end_month"],
-                    "start_date": datetime(
-                        datetime.now().year, item["start_month"], item["start_day"]
-                    ),
-                    "end_date": datetime(
-                        datetime.now().year, item["end_month"], item["end_day"]
-                    ),
                 }
                 for item in imported_data
             ]
             st.session_state.all_areas = [
                 item["all_drawings"] for item in imported_data
             ]
+            st.session_state.active_area = [False] * len(imported_data)
             st.rerun()
     with col2:
         if st.button("ปิด"):
@@ -99,6 +138,9 @@ def display_areas_data():
 
         json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
         st.text_area("ข้อมูลเขต", json_data, height=300)
+
+    st.text_area("date_range", st.session_state.date_ranges, height=300)
+    st.text_area("all_areas", st.session_state.all_areas, height=300)
 
 
 @st.cache_resource
@@ -134,7 +176,7 @@ def get_data(filter_date_range: tuple[datetime], device: str):
 def plot_gps_coords(gps_coords):
     # Create a Folium map
     m = folium.Map(location=START_LOCATION, zoom_start=ZOOM_START)
-
+    polyline_coords = []
     # Add markers to the map
     for coord in gps_coords:
         popup_content = f"""
@@ -157,10 +199,13 @@ def plot_gps_coords(gps_coords):
             tooltip=tooltip_content,
         ).add_to(m)
 
+        # Add the coordinates to make polyline
+        polyline_coords = [[coord["lat"], coord["lon"]]]
+
     # Add a PolyLine to connect the points
     if gps_coords:
         folium.PolyLine(
-            locations=[[coord["lat"], coord["lon"]] for coord in gps_coords],
+            locations=polyline_coords,
             color="blue",
             weight=2.5,
             opacity=1,
@@ -201,6 +246,57 @@ with col2:
     )
     if len(filter_date_range) == 2:
         st.session_state.filter_date_range = filter_date_range
+
+        # might not need the code below if we check when find when checking if point in area
+        filter_date_range_start_year = filter_date_range[0].year
+        filter_date_range_end_year = filter_date_range[1].year
+
+        i=0
+        for date_range in st.session_state.date_ranges:
+            # is date range in the selected filter_date_range
+            
+            st.session_state.active_area[i] = False
+
+            # if date_ranges cross year
+            if date_range["start_month"] > date_range["end_month"] or (
+                date_range["start_month"] == date_range["end_month"]
+                and date_range["start_day"] > date_range["end_day"]
+            ):
+
+                pass
+            else:
+                date_range_0_start = datetime(
+                    filter_date_range_start_year,
+                    date_range["start_month"],
+                    date_range["start_day"],
+                )
+                date_range_0_end = datetime(
+                    filter_date_range_start_year,
+                    date_range["end_month"],
+                    date_range["end_day"],
+                )
+
+                date_range_1_start = datetime(
+                    filter_date_range_end_year,
+                    date_range["start_month"],
+                    date_range["start_day"],
+                )
+                date_range_1_end = datetime(
+                    filter_date_range_end_year,
+                    date_range["end_month"],
+                    date_range["end_day"],
+                )
+
+                if (
+                    date_range_0_start <= filter_date_range[0] <= date_range_0_end
+                    or date_range_1_start <= filter_date_range[1] <= date_range_1_end
+                ):
+                    st.session_state.active_area[i] = True
+            
+
+            i+=1
+            # if date_ranges in the same year
+            # check if
         # st.rerun()
 
 
@@ -211,9 +307,6 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
     st.session_state.gps_coords = get_data(
         filter_date_range=filter_date_range, device=filter_boat
     )
-
- 
-    # Plot GPS coordinates on a map
 
 
 # Plot GPS coordinates on a map
