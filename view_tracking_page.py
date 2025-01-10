@@ -5,8 +5,10 @@ import pymongo
 import folium
 from streamlit_folium import st_folium
 from folium import IFrame
+import pandas as pd
 
-boat_data = {"เรือ 1": 1} # add boat data here
+
+boat_data = {"เรือ 1": 1}  # add boat data here
 
 if "date_ranges" not in st.session_state:
     st.session_state.date_ranges = []
@@ -176,15 +178,19 @@ def get_data(filter_date_range: tuple[datetime], device: str):
         },
         "device": boat_data[device],
     }
-    projection = {"recorded_time": 1, "device": 1, "lat": 1, "lon": 1, "vbat": 1}
+    
+    #projection = {"recorded_time": 1, "device": 1, "lat": 1, "lon": 1, "vbat": 1}
     items = (
         db["coordinate"]
-        .find(filter=query_filter, projection=projection)
+        .find(filter=query_filter)
         .sort("recorded_time", pymongo.ASCENDING)
     )
 
     items = list(items)  # make hashable for st.cache_data
 
+    # add is_in_area field to each item
+    for item in items:
+        item["is_in_area"] = False
     return items
 
 
@@ -199,7 +205,7 @@ def is_point_in_area(test_lat: float, test_lon, area_index: int):
         polygon = area["geometry"]["coordinates"][0]
         n = len(polygon)
         inside = False
-        p1x, p1y = polygon[0] # previous point, start from first point
+        p1x, p1y = polygon[0]  # previous point, start from first point
         for i in range(n + 1):
             p2x, p2y = polygon[i % n]
             if i == 0:
@@ -215,6 +221,7 @@ def is_point_in_area(test_lat: float, test_lon, area_index: int):
 
     return inside
 
+
 def plot_gps_coords(gps_coords):
     # Create a Folium map
     m = folium.Map(location=START_LOCATION, zoom_start=ZOOM_START)
@@ -225,7 +232,6 @@ def plot_gps_coords(gps_coords):
         if st.session_state.active_area[idx]:
             for area in areas:
                 folium.GeoJson(area).add_to(m)
-    
 
     # Add markers to the map
     for coord in gps_coords:
@@ -236,7 +242,13 @@ def plot_gps_coords(gps_coords):
             this_area_start_month = st.session_state.date_ranges[idx]["start_month"]
             this_area_end_day = st.session_state.date_ranges[idx]["end_day"]
             this_area_end_month = st.session_state.date_ranges[idx]["end_month"]
-            if is_date_in_day_month_range(coord["recorded_time"], this_area_start_day, this_area_start_month, this_area_end_day, this_area_end_month):
+            if is_date_in_day_month_range(
+                coord["recorded_time"],
+                this_area_start_day,
+                this_area_start_month,
+                this_area_end_day,
+                this_area_end_month,
+            ):
                 if is_point_in_area(coord["lat"], coord["lon"], idx):
                     # point is in the area
                     is_coord_in_area = True
@@ -254,8 +266,10 @@ def plot_gps_coords(gps_coords):
         popup = folium.Popup(iframe, max_width=300)
         if is_coord_in_area:
             color = "red"
+            coord["is_in_area"] = True
         else:
             color = "blue"
+            coord["is_in_area"] = False
         folium.CircleMarker(
             location=[coord["lat"], coord["lon"]],
             radius=3,  # Size of the dot
@@ -279,6 +293,7 @@ def plot_gps_coords(gps_coords):
         ).add_to(m)
 
     return m
+
 
 def is_date_in_day_month_range(
     date: date, start_day: int, start_month: int, end_day: int, end_month: int
@@ -308,6 +323,20 @@ def is_date_in_day_month_range(
         test_end_date = datetime(date.year, end_month, end_day)
         # day_month_range same year
         return test_start_date <= date <= test_end_date
+
+def display_gps_coords():
+    # Display the GPS coordinates in a table
+    st.subheader("ข้อมูลตำแหน่ง")
+    if st.session_state.gps_coords:
+        coords_df = pd.DataFrame(st.session_state.gps_coords)
+        column_order = ["recorded_time", "lat", "lon", "vbat", "is_in_area"]
+        if st.toggle("แสดงทุกคอลัมน์"):
+            column_order = None
+        
+        # show only rows that is_in_area is True
+        if st.toggle("แสดงเฉพาะตำแหน่งที่อยู่ในเขต"):
+            coords_df = coords_df[coords_df["is_in_area"]]
+        st.dataframe(data=coords_df,column_order=column_order)
 
 
 client = init_connection()
@@ -353,7 +382,7 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
 
     i = 0
     # mark area polygons to show on map
-    #print("start", filter_date_range[0], "end", filter_date_range[1])
+    # print("start", filter_date_range[0], "end", filter_date_range[1])
     for date_range in st.session_state.date_ranges:
         # is date range in the selected filter_date_range
         st.session_state.active_area[i] = False
@@ -388,3 +417,4 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
 
 m = plot_gps_coords(st.session_state.gps_coords)
 st_folium(m, width=800, height=600)
+display_gps_coords()
