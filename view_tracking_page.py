@@ -1,6 +1,6 @@
 import streamlit as st
 import json
-from datetime import datetime
+from datetime import datetime, date
 import pymongo
 import folium
 from streamlit_folium import st_folium
@@ -200,7 +200,7 @@ def plot_gps_coords(gps_coords):
         ).add_to(m)
 
         # Add the coordinates to make polyline
-        polyline_coords = [[coord["lat"], coord["lon"]]]
+        polyline_coords.append([coord["lat"], coord["lon"]])
 
     # Add a PolyLine to connect the points
     if gps_coords:
@@ -211,12 +211,18 @@ def plot_gps_coords(gps_coords):
             opacity=1,
         ).add_to(m)
 
+    # Add areas polygon to the map
+    for idx, areas in enumerate(st.session_state.all_areas):
+        if st.session_state.active_area[idx]:
+            for area in areas:
+                folium.GeoJson(area).add_to(m)
     return m
 
 
 def is_date_in_day_month_range(
-    date: datetime, start_day: int, start_month: int, end_day: int, end_month: int
+    date: date, start_day: int, start_month: int, end_day: int, end_month: int
 ):
+    
     if (
         start_month < 1
         or start_month > 12
@@ -236,20 +242,16 @@ def is_date_in_day_month_range(
             date, start_day, start_month, 31, 12
         ) or is_date_in_day_month_range(date, 1, 1, end_day, end_month)
     else:
+        date = datetime(date.year, date.month, date.day)
+        test_start_date = datetime(date.year, start_month, start_day)
+        test_end_date = datetime(date.year, end_month, end_day)
         # day_month_range same year
-        return (start_month <= date.month <= end_month) and (
-            (date.month == start_month and date.day >= start_day)
-            or (date.month == end_month and date.day <= end_day)
-            or (start_month < date.month < end_month)
-        )
-
+        return test_start_date <= date <= test_end_date
 
 client = init_connection()
 
-
 if st.button("นำเข้าข้อมูลเขต"):
     upload_file()
-
 
 display_areas_data()
 
@@ -289,6 +291,7 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
 
     i = 0
     # mark area polygons to show on map
+    print("start", filter_date_range[0], "end", filter_date_range[1])
     for date_range in st.session_state.date_ranges:
         # is date range in the selected filter_date_range
         st.session_state.active_area[i] = False
@@ -298,13 +301,19 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
             date_range["start_month"],
             date_range["end_day"],
             date_range["end_month"],
-        ) or is_date_in_day_month_range(
+        ):
+            print(f"start {date_range['start_day']}/{date_range['start_month']} - end {date_range['end_day']}/{date_range['end_month']}")
+            print(f"{filter_date_range[0]} area {i} is in filter date range")
+            st.session_state.active_area[i] = True
+        if is_date_in_day_month_range(
             filter_date_range[1],
             date_range["start_day"],
             date_range["start_month"],
             date_range["end_day"],
             date_range["end_month"],
         ):
+            print(f"start {date_range['start_day']}/{date_range['start_month']} - end {date_range['end_day']}/{date_range['end_month']}")
+            print(f"{filter_date_range[1]} area {i} is in filter date range")
             st.session_state.active_area[i] = True
 
         i += 1
