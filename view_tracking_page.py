@@ -6,7 +6,7 @@ import folium
 from streamlit_folium import st_folium
 from folium import IFrame
 
-boat_data = {"เรือ 1": 1}
+boat_data = {"เรือ 1": 1} # add boat data here
 
 if "date_ranges" not in st.session_state:
     st.session_state.date_ranges = []
@@ -221,8 +221,18 @@ def plot_gps_coords(gps_coords):
     polyline_coords = []
     # Add markers to the map
     for coord in gps_coords:
-
+        is_coord_in_area = False
         # check if the coordinate is in the active area polygon
+        for idx, areas in enumerate(st.session_state.all_areas):
+            this_area_start_day = st.session_state.date_ranges[idx]["start_day"]
+            this_area_start_month = st.session_state.date_ranges[idx]["start_month"]
+            this_area_end_day = st.session_state.date_ranges[idx]["end_day"]
+            this_area_end_month = st.session_state.date_ranges[idx]["end_month"]
+            if is_date_in_day_month_range(coord["recorded_time"], this_area_start_day, this_area_start_month, this_area_end_day, this_area_end_month):
+                if is_point_in_area(coord["lat"], coord["lon"], idx):
+                    # point is in the area
+                    is_coord_in_area = True
+                    break
 
         popup_content = f"""
         <div style="width: 200px;">
@@ -234,12 +244,16 @@ def plot_gps_coords(gps_coords):
         tooltip_content = f"Recorded Time: {coord['recorded_time']}<br>Lat: {coord['lat']}<br>Lon: {coord['lon']}"
         iframe = IFrame(popup_content, width=210, height=100)
         popup = folium.Popup(iframe, max_width=300)
+        if is_coord_in_area:
+            color = "red"
+        else:
+            color = "blue"
         folium.CircleMarker(
             location=[coord["lat"], coord["lon"]],
             radius=3,  # Size of the dot
-            color="blue",
+            color=color,
             fill=True,
-            fill_color="blue",
+            fill_color=color,
             popup=popup,
             tooltip=tooltip_content,
         ).add_to(m)
@@ -337,7 +351,7 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
 
     i = 0
     # mark area polygons to show on map
-    print("start", filter_date_range[0], "end", filter_date_range[1])
+    #print("start", filter_date_range[0], "end", filter_date_range[1])
     for date_range in st.session_state.date_ranges:
         # is date range in the selected filter_date_range
         st.session_state.active_area[i] = False
