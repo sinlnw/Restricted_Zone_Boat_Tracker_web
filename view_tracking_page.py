@@ -214,6 +214,36 @@ def plot_gps_coords(gps_coords):
     return m
 
 
+def is_date_in_day_month_range(
+    date: datetime, start_day: int, start_month: int, end_day: int, end_month: int
+):
+    if (
+        start_month < 1
+        or start_month > 12
+        or end_month < 1
+        or end_month > 12
+        or start_day < 1
+        or start_day > 31
+        or end_day < 1
+        or end_day > 31
+    ):
+        # invalid date range
+        return False
+
+    if start_month > end_month or (start_month == end_month and start_day > end_day):
+        # day_month_range cross year
+        return is_date_in_day_month_range(
+            date, start_day, start_month, 31, 12
+        ) or is_date_in_day_month_range(date, 1, 1, end_day, end_month)
+    else:
+        # day_month_range same year
+        return (start_month <= date.month <= end_month) and (
+            (date.month == start_month and date.day >= start_day)
+            or (date.month == end_month and date.day <= end_day)
+            or (start_month < date.month < end_month)
+        )
+
+
 client = init_connection()
 
 
@@ -245,58 +275,7 @@ with col2:
         key="date_range_picker",
     )
     if len(filter_date_range) == 2:
-        st.session_state.filter_date_range = filter_date_range
-
-        # might not need the code below if we check when find when checking if point in area
-        filter_date_range_start_year = filter_date_range[0].year
-        filter_date_range_end_year = filter_date_range[1].year
-
-        i=0
-        for date_range in st.session_state.date_ranges:
-            # is date range in the selected filter_date_range
-            
-            st.session_state.active_area[i] = False
-
-            # if date_ranges cross year
-            if date_range["start_month"] > date_range["end_month"] or (
-                date_range["start_month"] == date_range["end_month"]
-                and date_range["start_day"] > date_range["end_day"]
-            ):
-
-                pass
-            else:
-                date_range_0_start = datetime(
-                    filter_date_range_start_year,
-                    date_range["start_month"],
-                    date_range["start_day"],
-                )
-                date_range_0_end = datetime(
-                    filter_date_range_start_year,
-                    date_range["end_month"],
-                    date_range["end_day"],
-                )
-
-                date_range_1_start = datetime(
-                    filter_date_range_end_year,
-                    date_range["start_month"],
-                    date_range["start_day"],
-                )
-                date_range_1_end = datetime(
-                    filter_date_range_end_year,
-                    date_range["end_month"],
-                    date_range["end_day"],
-                )
-
-                if (
-                    date_range_0_start <= filter_date_range[0] <= date_range_0_end
-                    or date_range_1_start <= filter_date_range[1] <= date_range_1_end
-                ):
-                    st.session_state.active_area[i] = True
-            
-
-            i+=1
-            # if date_ranges in the same year
-            # check if
+        st.session_state.filter_date_range = filter_date_range     
         # st.rerun()
 
 
@@ -304,6 +283,31 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
     if len(filter_date_range) != 2:
         st.warning("กรุณาเลือกช่วงเวลาให้ถูกต้อง")
         st.stop()
+    
+    # might not need the code below if we check when find when checking if point in area
+    # but polygon would not show if there is no point in the same date range as area
+
+    i = 0
+    # mark area polygons to show on map
+    for date_range in st.session_state.date_ranges:
+        # is date range in the selected filter_date_range
+        st.session_state.active_area[i] = False
+        if is_date_in_day_month_range(
+            filter_date_range[0],
+            date_range["start_day"],
+            date_range["start_month"],
+            date_range["end_day"],
+            date_range["end_month"],
+        ) or is_date_in_day_month_range(
+            filter_date_range[1],
+            date_range["start_day"],
+            date_range["start_month"],
+            date_range["end_day"],
+            date_range["end_month"],
+        ):
+            st.session_state.active_area[i] = True
+
+        i += 1
     st.session_state.gps_coords = get_data(
         filter_date_range=filter_date_range, device=filter_boat
     )
