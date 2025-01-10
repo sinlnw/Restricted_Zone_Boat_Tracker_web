@@ -329,6 +329,7 @@ def display_gps_coords():
     st.subheader("ข้อมูลตำแหน่ง")
     if st.session_state.gps_coords:
         coords_df = pd.DataFrame(st.session_state.gps_coords)
+        coords_df = coords_df.drop("_id",axis=1)
         column_order = ["recorded_time", "lat", "lon", "vbat", "is_in_area"]
         if st.toggle("แสดงทุกคอลัมน์"):
             column_order = None
