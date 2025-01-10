@@ -49,11 +49,11 @@ example_all_areas = [
                 "type": "Polygon",
                 "coordinates": [
                     [
-                        [100.566273, 13.849372],
-                        [100.572281, 13.849872],
-                        [100.572667, 13.846247],
-                        [100.565286, 13.842539],
-                        [100.566273, 13.849372],
+                        [100.566874, 13.849414],
+                        [100.569062, 13.849497],
+                        [100.56932, 13.846622],
+                        [100.566058, 13.846372],
+                        [100.566874, 13.849414],
                     ]
                 ],
             },
@@ -67,14 +67,29 @@ example_all_areas = [
                 "type": "Polygon",
                 "coordinates": [
                     [
-                        [100.577173, 13.853872],
-                        [100.566359, 13.845872],
-                        [100.578761, 13.84533],
-                        [100.577173, 13.853872],
+                        [100.56756, 13.84858],
+                        [100.56623, 13.846622],
+                        [100.56859, 13.846205],
+                        [100.56756, 13.84858],
                     ]
                 ],
             },
-        }
+        },
+        {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [100.571208, 13.847789],
+                        [100.569577, 13.845789],
+                        [100.572753, 13.845997],
+                        [100.571208, 13.847789],
+                    ]
+                ],
+            },
+        },
     ],
 ]
 START_LOCATION = [13.847332, 100.572258]
@@ -173,12 +188,42 @@ def get_data(filter_date_range: tuple[datetime], device: str):
     return items
 
 
+def is_point_in_area(test_lat: float, test_lon, area_index: int):
+    # check if the point is in the area polygon using ray casting algorithm
+    # lat = y   lon = x
+    myareas = st.session_state.all_areas[area_index]
+    for area in myareas:
+        if area["geometry"]["type"] != "Polygon":
+            # only support polygon type
+            continue
+        polygon = area["geometry"]["coordinates"][0]
+        n = len(polygon)
+        inside = False
+        p1x, p1y = polygon[0] # previous point, start from first point
+        for i in range(n + 1):
+            p2x, p2y = polygon[i % n]
+            if i == 0:
+                continue
+            if test_lat > min(p1y, p2y):
+                if test_lat <= max(p1y, p2y):
+                    if test_lon <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (test_lat - p2y) * (p1x - p2x) / (p1y - p2y) + p2x
+                        if p1x == p2x or test_lon < xinters:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+
+    return inside
+
 def plot_gps_coords(gps_coords):
     # Create a Folium map
     m = folium.Map(location=START_LOCATION, zoom_start=ZOOM_START)
     polyline_coords = []
     # Add markers to the map
     for coord in gps_coords:
+
+        # check if the coordinate is in the active area polygon
+
         popup_content = f"""
         <div style="width: 200px;">
             <b>Recorded Time:</b> {coord['recorded_time']}<br>
@@ -222,7 +267,7 @@ def plot_gps_coords(gps_coords):
 def is_date_in_day_month_range(
     date: date, start_day: int, start_month: int, end_day: int, end_month: int
 ):
-    
+
     if (
         start_month < 1
         or start_month > 12
@@ -247,6 +292,7 @@ def is_date_in_day_month_range(
         test_end_date = datetime(date.year, end_month, end_day)
         # day_month_range same year
         return test_start_date <= date <= test_end_date
+
 
 client = init_connection()
 
@@ -277,7 +323,7 @@ with col2:
         key="date_range_picker",
     )
     if len(filter_date_range) == 2:
-        st.session_state.filter_date_range = filter_date_range     
+        st.session_state.filter_date_range = filter_date_range
         # st.rerun()
 
 
@@ -285,7 +331,7 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
     if len(filter_date_range) != 2:
         st.warning("กรุณาเลือกช่วงเวลาให้ถูกต้อง")
         st.stop()
-    
+
     # might not need the code below if we check when find when checking if point in area
     # but polygon would not show if there is no point in the same date range as area
 
@@ -302,8 +348,8 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
             date_range["end_day"],
             date_range["end_month"],
         ):
-            print(f"start {date_range['start_day']}/{date_range['start_month']} - end {date_range['end_day']}/{date_range['end_month']}")
-            print(f"{filter_date_range[0]} area {i} is in filter date range")
+            # print(f"start {date_range['start_day']}/{date_range['start_month']} - end {date_range['end_day']}/{date_range['end_month']}")
+            # print(f"{filter_date_range[0]} area {i} is in filter date range")
             st.session_state.active_area[i] = True
         if is_date_in_day_month_range(
             filter_date_range[1],
@@ -312,8 +358,8 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
             date_range["end_day"],
             date_range["end_month"],
         ):
-            print(f"start {date_range['start_day']}/{date_range['start_month']} - end {date_range['end_day']}/{date_range['end_month']}")
-            print(f"{filter_date_range[1]} area {i} is in filter date range")
+            # print(f"start {date_range['start_day']}/{date_range['start_month']} - end {date_range['end_day']}/{date_range['end_month']}")
+            # print(f"{filter_date_range[1]} area {i} is in filter date range")
             st.session_state.active_area[i] = True
 
         i += 1
