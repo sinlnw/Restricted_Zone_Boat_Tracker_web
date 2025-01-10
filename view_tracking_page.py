@@ -219,6 +219,14 @@ def plot_gps_coords(gps_coords):
     # Create a Folium map
     m = folium.Map(location=START_LOCATION, zoom_start=ZOOM_START)
     polyline_coords = []
+
+    # Add areas polygon to the map
+    for idx, areas in enumerate(st.session_state.all_areas):
+        if st.session_state.active_area[idx]:
+            for area in areas:
+                folium.GeoJson(area).add_to(m)
+    
+
     # Add markers to the map
     for coord in gps_coords:
         is_coord_in_area = False
@@ -270,13 +278,7 @@ def plot_gps_coords(gps_coords):
             opacity=1,
         ).add_to(m)
 
-    # Add areas polygon to the map
-    for idx, areas in enumerate(st.session_state.all_areas):
-        if st.session_state.active_area[idx]:
-            for area in areas:
-                folium.GeoJson(area).add_to(m)
     return m
-
 
 def is_date_in_day_month_range(
     date: date, start_day: int, start_month: int, end_day: int, end_month: int
