@@ -14,6 +14,10 @@ if "date_ranges" not in st.session_state:
     st.session_state.date_ranges = []
 if "all_areas" not in st.session_state:
     st.session_state.all_areas = []
+if "centers" not in st.session_state:
+    st.session_state.centers = []
+if "zoom_levels" not in st.session_state:
+    st.session_state.zoom_levels = []
 if "active_area" not in st.session_state:
     st.session_state.active_area = []  # true if in date range
 if "filter_date_range" not in st.session_state:
@@ -95,7 +99,7 @@ example_all_areas = [
     ],
 ]
 START_LOCATION = [13.847332, 100.572258]
-ZOOM_START = 15
+DEFAULT_ZOOM = 15
 
 st.title("ประวัติตำแหน่ง")
 
@@ -125,6 +129,12 @@ def upload_file():
                 item["all_drawings"] for item in imported_data
             ]
             st.session_state.active_area = [False] * len(imported_data)
+            st.session_state.centers = [
+                item.get("center", START_LOCATION) for item in imported_data
+            ]
+            st.session_state.zoom_levels = [
+                item.get("zoom", DEFAULT_ZOOM) for item in imported_data
+            ]
             st.rerun()
     with col2:
         if st.button("ปิด"):
@@ -145,6 +155,11 @@ def display_areas_data():
                     "start_month": date_ranges[idx]["start_month"],
                     "end_day": date_ranges[idx]["end_day"],
                     "end_month": date_ranges[idx]["end_month"],
+                    "center": [
+                        st.session_state.centers[idx][0],
+                        st.session_state.centers[idx][1],
+                    ],
+                    "zoom": st.session_state.zoom_levels[idx],
                     # "start_day": date_ranges[idx]["start_date"].day,
                     # "start_month": date_ranges[idx]["start_date"].month,
                     # "end_day": date_ranges[idx]["end_date"].day,
@@ -178,8 +193,8 @@ def get_data(filter_date_range: tuple[datetime], device: str):
         },
         "device": boat_data[device],
     }
-    
-    #projection = {"recorded_time": 1, "device": 1, "lat": 1, "lon": 1, "vbat": 1}
+
+    # projection = {"recorded_time": 1, "device": 1, "lat": 1, "lon": 1, "vbat": 1}
     items = (
         db["coordinate"]
         .find(filter=query_filter)
@@ -224,7 +239,19 @@ def is_point_in_area(test_lat: float, test_lon, area_index: int):
 
 def plot_gps_coords(gps_coords):
     # Create a Folium map
-    m = folium.Map(location=START_LOCATION, zoom_start=ZOOM_START)
+
+    no_active_area = True
+    # Find the first active area and use it as the map center and zoom level
+    for idx, areas in enumerate(st.session_state.all_areas):
+        if st.session_state.active_area[idx]:
+            m = folium.Map(
+                location=st.session_state.centers[idx],
+                zoom_start=st.session_state.zoom_levels[idx],
+            )
+            no_active_area = False
+            break
+    if no_active_area:
+        m = folium.Map(location=START_LOCATION, zoom_start=DEFAULT_ZOOM)
     polyline_coords = []
 
     # Add areas polygon to the map
@@ -324,22 +351,24 @@ def is_date_in_day_month_range(
         # day_month_range same year
         return test_start_date <= date <= test_end_date
 
+
 def display_gps_coords():
     # Display the GPS coordinates in a table
     st.subheader("ข้อมูลตำแหน่ง")
     if st.session_state.gps_coords:
         coords_df = pd.DataFrame(st.session_state.gps_coords)
-        coords_df = coords_df.drop("_id",axis=1)
+        coords_df = coords_df.drop("_id", axis=1)
         column_order = ["recorded_time", "lat", "lon", "vbat", "is_in_area"]
         if st.toggle("แสดงทุกคอลัมน์"):
             column_order = None
-        
+
         # show only rows that is_in_area is True
         if st.toggle("แสดงเฉพาะตำแหน่งที่อยู่ในเขต"):
             coords_df = coords_df[coords_df["is_in_area"]]
-        st.dataframe(data=coords_df,column_order=column_order)
+        st.dataframe(data=coords_df, column_order=column_order)
 
 
+# Web display starts here
 client = init_connection()
 
 if st.button("นำเข้าข้อมูลเขต"):
