@@ -7,8 +7,7 @@ from calendar import month_name, monthrange
 import json
 START_LOCATION = [13.847332, 100.572258]
 DEFAULT_ZOOM = 15
-#TODO: might save current center and zoom level
-st.title("สร้างเขต")
+
 
 drawing_options = {
     "polyline": False,
@@ -35,8 +34,50 @@ if 'zoom_levels' not in st.session_state:
 if 'selected_map_idx' not in st.session_state:
     st.session_state.selected_map_idx = None
 
+# Function to get the number of days in a given month and year
+def get_days_in_month(month, year=2023):
+    month_idx = list(month_name).index(month)
+    return list(range(1, monthrange(year, month_idx)[1] + 1))
+
+# Dialog for importing AREA.txt
+@st.dialog("นำเข้าข้อมูลเขต")
+def upload_file():
+    uploaded_file = st.file_uploader("Import AREA.txt", type="txt")
+    col1, col2, col3 = st.columns([0.2,0.2,0.6])
+    with col1:
+        if st.button("ยืนยัน") and uploaded_file is not None:
+            # Read the file content
+            content = uploaded_file.read().decode("utf-8")
+            imported_data = json.loads(content)
+            
+            # Update date_ranges and drawn_polygons in session state
+            st.session_state.date_ranges = [
+                {
+                    "start_day": item["start_day"],
+                    "start_month": item["start_month"],
+                    "end_day": item["end_day"],
+                    "end_month": item["end_month"],
+                    "start_date": datetime(datetime.now().year, item["start_month"], item["start_day"]),
+                    "end_date": datetime(datetime.now().year, item["end_month"], item["end_day"])
+                }
+                for item in imported_data
+            ]
+            st.session_state.drawn_polygons = [item.get("all_drawings", None) for item in imported_data]
+            st.session_state.centers = [item.get("center", START_LOCATION) for item in imported_data]
+            st.session_state.zoom_levels = [item.get("zoom", DEFAULT_ZOOM) for item in imported_data]
+            st.rerun()
+    with col2:
+        if st.button("ปิด"):
+            st.rerun()
+
 # Container for all date ranges
 date_ranges_container = st.container(border=True)
+
+st.title("สร้างเขต")
+
+# Button to open dialog for importing AREA.txt
+if st.button("นำเข้าข้อมูลเขต"):
+    upload_file()
 
 # add date range
 if st.button("เพิ่มช่วงวันที่"):
@@ -54,10 +95,6 @@ if st.button("เพิ่มช่วงวันที่"):
 
 
 months = list(month_name)[1:]
-# Function to get the number of days in a given month and year
-def get_days_in_month(month, year=2023):
-    month_idx = list(month_name).index(month)
-    return list(range(1, monthrange(year, month_idx)[1] + 1))
 
 # Display all date ranges
 with date_ranges_container:
@@ -161,40 +198,6 @@ if st.session_state.selected_map_idx is not None:
     #st.write(st.session_state.drawn_polygons[idx])
 
 
-# Dialog for importing AREA.txt
-@st.dialog("นำเข้าข้อมูลเขต")
-def upload_file():
-    uploaded_file = st.file_uploader("Import AREA.txt", type="txt")
-    col1, col2, col3 = st.columns([0.2,0.2,0.6])
-    with col1:
-        if st.button("ยืนยัน") and uploaded_file is not None:
-            # Read the file content
-            content = uploaded_file.read().decode("utf-8")
-            imported_data = json.loads(content)
-            
-            # Update date_ranges and drawn_polygons in session state
-            st.session_state.date_ranges = [
-                {
-                    "start_day": item["start_day"],
-                    "start_month": item["start_month"],
-                    "end_day": item["end_day"],
-                    "end_month": item["end_month"],
-                    "start_date": datetime(datetime.now().year, item["start_month"], item["start_day"]),
-                    "end_date": datetime(datetime.now().year, item["end_month"], item["end_day"])
-                }
-                for item in imported_data
-            ]
-            st.session_state.drawn_polygons = [item.get("all_drawings", None) for item in imported_data]
-            st.session_state.centers = [item.get("center", START_LOCATION) for item in imported_data]
-            st.session_state.zoom_levels = [item.get("zoom", DEFAULT_ZOOM) for item in imported_data]
-            st.rerun()
-    with col2:
-        if st.button("ปิด"):
-            st.rerun()
-
-
-
-
 
 # export button for exporting AREA.txt
 date_ranges = st.session_state.get('date_ranges', [])
@@ -221,9 +224,6 @@ json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
 
 st.text_area("ข้อมูลเขต", json_data, height=300)
 
-# Button to open dialog for importing AREA.txt
-if st.button("นำเข้าข้อมูลเขต"):
-    upload_file()
 
 # download button for AREA file
 st.download_button(
