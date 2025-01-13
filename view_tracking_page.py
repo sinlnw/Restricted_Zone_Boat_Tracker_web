@@ -374,6 +374,9 @@ with col2:
 
 
 if st.button("ดึงข้อมูล") and filter_boat and filter_date_range:
+    if not st.session_state.date_ranges or not st.session_state.all_areas:
+        st.warning("กรุณานำเข้าข้อมูลเขต")
+        st.stop()
     if len(filter_date_range) != 2:
         st.warning("กรุณาเลือกช่วงเวลาให้ถูกต้อง")
         st.stop()
