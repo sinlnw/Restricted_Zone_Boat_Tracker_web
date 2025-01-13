@@ -6,6 +6,7 @@ from streamlit_folium import folium_static, st_folium
 from calendar import month_name, monthrange
 import json
 START_LOCATION = [13.847332, 100.572258]
+DEFAULT_ZOOM = 15
 #TODO: might save current center and zoom level
 st.title("สร้างเขต")
 
@@ -25,6 +26,12 @@ if 'drawn_polygons' not in st.session_state:
 if 'date_ranges' not in st.session_state:
     st.session_state.date_ranges = []
 
+if 'centers' not in st.session_state:
+    st.session_state.centers = []
+
+if 'zoom_levels' not in st.session_state:
+    st.session_state.zoom_levels = []
+
 if 'selected_map_idx' not in st.session_state:
     st.session_state.selected_map_idx = None
 
@@ -41,7 +48,9 @@ if st.button("เพิ่มช่วงวันที่"):
         'end_day':datetime.now().day,
         'end_month':datetime.now().month
     })
-    st.session_state.drawn_polygons.append(None)  
+    st.session_state.drawn_polygons.append(None)
+    st.session_state.centers.append(START_LOCATION)
+    st.session_state.zoom_levels.append(DEFAULT_ZOOM)
 
 
 months = list(month_name)[1:]
@@ -110,7 +119,7 @@ if st.session_state.selected_map_idx is not None:
     idx = st.session_state.selected_map_idx
     
   
-    m = folium.Map(location=START_LOCATION, zoom_start=15)
+    m = folium.Map(location=st.session_state.centers[idx], zoom_start=st.session_state.zoom_levels[idx])
     draw = folium.plugins.Draw(
         export=True,
         position='topleft',
@@ -137,6 +146,10 @@ if st.session_state.selected_map_idx is not None:
             if map_data is not None and "all_drawings" in map_data:
                 if map_data["all_drawings"]:
                     st.session_state.drawn_polygons[idx] = map_data["all_drawings"]
+
+                    # Update center and zoom level
+                    st.session_state.centers[idx] = [map_data["center"]["lat"], map_data["center"]["lng"]]
+                    st.session_state.zoom_levels[idx] = map_data["zoom"]
                     st.rerun()
 
     # clear button for polygon
@@ -171,7 +184,9 @@ def upload_file():
                 }
                 for item in imported_data
             ]
-            st.session_state.drawn_polygons = [item["all_drawings"] for item in imported_data]
+            st.session_state.drawn_polygons = [item.get("all_drawings", None) for item in imported_data]
+            st.session_state.centers = [item.get("center", START_LOCATION) for item in imported_data]
+            st.session_state.zoom_levels = [item.get("zoom", DEFAULT_ZOOM) for item in imported_data]
             st.rerun()
     with col2:
         if st.button("ปิด"):
@@ -193,7 +208,8 @@ for idx in range(len(date_ranges)):
         "start_month": date_ranges[idx]["start_month"],
         "end_day": date_ranges[idx]["end_day"],
         "end_month": date_ranges[idx]["end_month"],
-
+        "center":[st.session_state.centers[idx][0], st.session_state.centers[idx][1]],
+        "zoom":st.session_state.zoom_levels[idx],
         # "start_day": date_ranges[idx]["start_date"].day,
         # "start_month": date_ranges[idx]["start_date"].month,
         # "end_day": date_ranges[idx]["end_date"].day,
