@@ -70,14 +70,16 @@ def upload_file():
         if st.button("ปิด"):
             st.rerun()
 
-# Container for all date ranges
-date_ranges_container = st.container(border=True)
+
 
 st.title("สร้างเขต")
 
 # Button to open dialog for importing AREA.txt
 if st.button("นำเข้าข้อมูลเขต"):
     upload_file()
+
+# Container for all date ranges
+date_ranges_container = st.container(border=True)
 
 # add date range
 if st.button("เพิ่มช่วงวันที่"):
