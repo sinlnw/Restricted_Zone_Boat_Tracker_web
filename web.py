@@ -34,6 +34,9 @@ if 'zoom_levels' not in st.session_state:
 if 'selected_map_idx' not in st.session_state:
     st.session_state.selected_map_idx = None
 
+if 'old_created_date' not in st.session_state:
+    st.session_state.old_created_date = None
+
 # Function to get the number of days in a given month and year
 def get_days_in_month(month, year=2023):
     month_idx = list(month_name).index(month)
@@ -60,11 +63,12 @@ def upload_file():
                     "start_date": datetime(datetime.now().year, item["start_month"], item["start_day"]),
                     "end_date": datetime(datetime.now().year, item["end_month"], item["end_day"])
                 }
-                for item in imported_data
+                for item in imported_data["all_areas"]
             ]
-            st.session_state.drawn_polygons = [item.get("all_drawings", None) for item in imported_data]
-            st.session_state.centers = [item.get("center", START_LOCATION) for item in imported_data]
-            st.session_state.zoom_levels = [item.get("zoom", DEFAULT_ZOOM) for item in imported_data]
+            st.session_state.drawn_polygons = [item.get("all_drawings", None) for item in imported_data["all_areas"]]
+            st.session_state.centers = [item.get("center", START_LOCATION) for item in imported_data["all_areas"]]
+            st.session_state.zoom_levels = [item.get("zoom", DEFAULT_ZOOM) for item in imported_data["all_areas"]]
+            st.session_state.old_created_date = imported_data.get("created_date", None)
             st.rerun()
     with col2:
         if st.button("ปิด"):
@@ -222,15 +226,33 @@ for idx in range(len(date_ranges)):
         "all_drawings": drawn_polygons[idx]
     })
 
-json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
+# add created_date
+if st.session_state.old_created_date is None:
+    created_date_to_show = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+else:
+    created_date_to_show = st.session_state.old_created_date
 
-st.text_area("ข้อมูลเขต", json_data, height=300)
+show_file = {
+    "created_date": created_date_to_show,
+    "all_areas": paired_data
+}
+    
+export_file = {
+    "created_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    "all_areas": paired_data
+}
+
+export_json_data = json.dumps(export_file, ensure_ascii=False, indent=4)
+show_json_data = json.dumps(show_file, ensure_ascii=False, indent=4)
+
+
+st.text_area("ข้อมูลเขต",show_json_data, height=300)
 
 
 # download button for AREA file
 st.download_button(
     label="ดาวน์โหลด ข้อมูลเขต",
-    data=json_data,
+    data=export_json_data,
     file_name="AREA.txt",
     mime="application/json"
 )

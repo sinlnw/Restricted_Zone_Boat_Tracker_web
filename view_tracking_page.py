@@ -26,6 +26,8 @@ if "filter_boat" not in st.session_state:
     st.session_state.filter_boat = list(boat_data.keys())[0]
 if "gps_coords" not in st.session_state:
     st.session_state.gps_coords = []
+if "old_created_date" not in st.session_state:
+    st.session_state.old_created_date = None
 
 
 example_gps_coords = {
@@ -123,18 +125,19 @@ def upload_file():
                     "end_day": item["end_day"],
                     "end_month": item["end_month"],
                 }
-                for item in imported_data
+                for item in imported_data["all_areas"]
             ]
             st.session_state.all_areas = [
-                item["all_drawings"] for item in imported_data
+                item["all_drawings"] for item in imported_data["all_areas"]
             ]
-            st.session_state.active_area = [False] * len(imported_data)
+            st.session_state.active_area = [False] * len(imported_data["all_areas"])
             st.session_state.centers = [
-                item.get("center", START_LOCATION) for item in imported_data
+                item.get("center", START_LOCATION) for item in imported_data["all_areas"]
             ]
             st.session_state.zoom_levels = [
-                item.get("zoom", DEFAULT_ZOOM) for item in imported_data
+                item.get("zoom", DEFAULT_ZOOM) for item in imported_data["all_areas"]
             ]
+            st.session_state.old_created_date = imported_data.get("created_date", None)
             st.rerun()
     with col2:
         if st.button("ปิด"):
@@ -167,8 +170,11 @@ def display_areas_data():
                     "all_drawings": all_areas[idx],
                 }
             )
-
-        json_data = json.dumps(paired_data, ensure_ascii=False, indent=4)
+        show_data = {
+            "created_date": st.session_state.old_created_date,
+            "all_areas": paired_data,
+        }
+        json_data = json.dumps(show_data, ensure_ascii=False, indent=4)
         st.text_area("ข้อมูลเขต", json_data, height=300)
 
     st.text_area("date_range", st.session_state.date_ranges, height=300)
