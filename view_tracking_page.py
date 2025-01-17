@@ -32,12 +32,12 @@ if "old_created_date" not in st.session_state:
 
 example_gps_coords = {
     "_id": {"$oid": "6777a8dadabd12fbd3985eac"},
-    "recorded_time": {"$date": "2024-12-13T10:12:28.000Z"},
-    "received_time": {"$date": "2025-01-03T16:07:37.368Z"},
-    "device": 1,
+    "created_at": {"$date": "2024-12-13T10:12:28.000Z"},
+    "rx_at": {"$date": "2025-01-03T16:07:37.368Z"},
+    "nodeId": 1,
     "lat": 13.8468624,
-    "lon": 100.5686336,
-    "vbat": 2.81,
+    "lng": 100.5686336,
+    "vBat": 2.81,
     "quality": 1,
     "satellites": 3,
     "temperature": 231,
@@ -193,18 +193,17 @@ def get_data(filter_date_range: tuple[datetime], device: str):
     start_date, end_date = filter_date_range
     db = client["test"]
     query_filter = {
-        "recorded_time": {
+        "created_at": {
             "$gte": datetime.combine(start_date, datetime.min.time()),
             "$lte": datetime.combine(end_date, datetime.max.time()),
         },
-        "device": boat_data[device],
+        "nodeId": boat_data[device],
     }
 
-    # projection = {"recorded_time": 1, "device": 1, "lat": 1, "lon": 1, "vbat": 1}
     items = (
-        db["coordinate"]
+        db["coordinate"]#TODO: use name form global variable
         .find(filter=query_filter)
-        .sort("recorded_time", pymongo.ASCENDING)
+        .sort("created_at", pymongo.ASCENDING)
     )
 
     items = list(items)  # make hashable for st.cache_data
@@ -215,9 +214,9 @@ def get_data(filter_date_range: tuple[datetime], device: str):
     return items
 
 
-def is_point_in_area(test_lat: float, test_lon, area_index: int):
+def is_point_in_area(test_lat: float, test_lng, area_index: int):
     # check if the point is in the area polygon using ray casting algorithm
-    # lat = y   lon = x
+    # lat = y   lng = x
     myareas = st.session_state.all_areas[area_index]
     for area in myareas:
         if area["geometry"]["type"] != "Polygon":
@@ -233,10 +232,10 @@ def is_point_in_area(test_lat: float, test_lon, area_index: int):
                 continue
             if test_lat > min(p1y, p2y):
                 if test_lat <= max(p1y, p2y):
-                    if test_lon <= max(p1x, p2x):
+                    if test_lng <= max(p1x, p2x):
                         if p1y != p2y:
                             xinters = (test_lat - p2y) * (p1x - p2x) / (p1y - p2y) + p2x
-                        if p1x == p2x or test_lon < xinters:
+                        if p1x == p2x or test_lng < xinters:
                             inside = not inside
             p1x, p1y = p2x, p2y
 
@@ -276,25 +275,25 @@ def plot_gps_coords(gps_coords):
             this_area_end_day = st.session_state.date_ranges[idx]["end_day"]
             this_area_end_month = st.session_state.date_ranges[idx]["end_month"]
             if is_date_in_day_month_range(
-                coord["recorded_time"],
+                coord["created_at"],
                 this_area_start_day,
                 this_area_start_month,
                 this_area_end_day,
                 this_area_end_month,
             ):
-                if is_point_in_area(coord["lat"], coord["lon"], idx):
+                if is_point_in_area(coord["lat"], coord["lng"], idx):
                     # point is in the area
                     is_coord_in_area = True
                     break
 
         popup_content = f"""
         <div style="width: 200px;">
-            <b>Recorded Time:</b> {coord['recorded_time']}<br>
+            <b>Recorded Time:</b> {coord['created_at']}<br>
             <b>Lat:</b> {coord['lat']}<br>
-            <b>Lon:</b> {coord['lon']}
+            <b>Lng:</b> {coord['lng']}
         </div>
         """
-        tooltip_content = f"Recorded Time: {coord['recorded_time']}<br>Lat: {coord['lat']}<br>Lon: {coord['lon']}"
+        tooltip_content = f"Recorded Time: {coord['created_at']}<br>Lat: {coord['lat']}<br>Lng: {coord['lng']}"
         iframe = IFrame(popup_content, width=210, height=100)
         popup = folium.Popup(iframe, max_width=300)
         if is_coord_in_area:
@@ -304,7 +303,7 @@ def plot_gps_coords(gps_coords):
             color = "blue"
             coord["is_in_area"] = False
         folium.CircleMarker(
-            location=[coord["lat"], coord["lon"]],
+            location=[coord["lat"], coord["lng"]],
             radius=3,  # Size of the dot
             color=color,
             fill=True,
@@ -314,7 +313,7 @@ def plot_gps_coords(gps_coords):
         ).add_to(m)
 
         # Add the coordinates to make polyline
-        polyline_coords.append([coord["lat"], coord["lon"]])
+        polyline_coords.append([coord["lat"], coord["lng"]])
 
     # Add a PolyLine to connect the points
     if gps_coords:
@@ -364,9 +363,9 @@ def display_gps_coords():
     if st.session_state.gps_coords:
         coords_df = pd.DataFrame(st.session_state.gps_coords)
         coords_df = coords_df.drop("_id", axis=1)
-        column_order = ["recorded_time", "lat", "lon", "vbat", "is_in_area"]
+        column_order = ["created_at", "lat", "lng", "vBat", "is_in_area"]
         if st.toggle("แสดงทุกคอลัมน์"):
-            column_order = None
+            column_order = ["created_at","rx_at", "lat", "lng", "vBat", "quality", "satellites", "temperature", "ttf", "rssi", "is_in_area"]
 
         # show only rows that is_in_area is True
         if st.toggle("แสดงเฉพาะตำแหน่งที่อยู่ในเขต"):
