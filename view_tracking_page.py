@@ -365,7 +365,7 @@ def display_gps_coords():
         coords_df = coords_df.drop("_id", axis=1)
         column_order = ["created_at", "lat", "lng", "vBat", "is_in_area"]
         if st.toggle("แสดงทุกคอลัมน์"):
-            column_order = ["created_at","rx_at", "lat", "lng", "vBat", "quality", "satellites", "temperature", "ttf", "rssi", "is_in_area"]
+            column_order = ["nodeId","created_at","rx_at", "lat", "lng", "temperature", "vBat", "quality", "satellites",  "rssi","rssi",  "ttf", "is_in_area"]
 
         # show only rows that is_in_area is True
         if st.toggle("แสดงเฉพาะตำแหน่งที่อยู่ในเขต"):
