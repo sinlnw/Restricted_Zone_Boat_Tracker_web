@@ -183,7 +183,7 @@ def display_areas_data():
 
 @st.cache_resource
 def init_connection():
-    return pymongo.MongoClient(**st.secrets["mongo"])
+    return pymongo.MongoClient(host=st.secrets["mongo"]["host"])
 
 
 # Pull data from the collection.
