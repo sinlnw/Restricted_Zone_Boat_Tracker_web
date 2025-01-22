@@ -7,6 +7,9 @@ from streamlit_folium import st_folium
 from folium import IFrame
 import pandas as pd
 
+MONGODB_DB_NAME='test'
+MONGODB_COLLECTION_NAME='coordinate'
+
 
 boat_data = {"เรือ 1": 1}  # add boat data here
 
@@ -191,7 +194,7 @@ def init_connection():
 @st.cache_data(ttl=600)
 def get_data(filter_date_range: tuple[datetime], device: str):
     start_date, end_date = filter_date_range
-    db = client["test"]
+    db = client[MONGODB_DB_NAME]
     query_filter = {
         "created_at": {
             "$gte": datetime.combine(start_date, datetime.min.time()),
@@ -201,7 +204,7 @@ def get_data(filter_date_range: tuple[datetime], device: str):
     }
 
     items = (
-        db["coordinate"]#TODO: use name form global variable
+        db[MONGODB_COLLECTION_NAME]#TODO: use name form global variable
         .find(filter=query_filter)
         .sort("created_at", pymongo.ASCENDING)
     )
