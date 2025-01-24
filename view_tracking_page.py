@@ -31,7 +31,8 @@ if "gps_coords" not in st.session_state:
     st.session_state.gps_coords = []
 if "old_created_date" not in st.session_state:
     st.session_state.old_created_date = None
-
+if "in_area_logs" not in st.session_state:
+    st.session_state.in_area_logs = []
 
 example_gps_coords = {
     "_id": {"$oid": "6777a8dadabd12fbd3985eac"},
@@ -247,7 +248,7 @@ def is_point_in_area(test_lat: float, test_lng, area_index: int):
 
 def plot_gps_coords(gps_coords):
     # Create a Folium map
-
+    st.session_state.in_area_logs = []
     no_active_area = True
     # Find the first active area and use it as the map center and zoom level
     for idx, areas in enumerate(st.session_state.all_areas):
@@ -267,6 +268,10 @@ def plot_gps_coords(gps_coords):
         if st.session_state.active_area[idx]:
             for area in areas:
                 folium.GeoJson(area).add_to(m)
+
+    prev_in_area = False
+    current_entry_time = None
+    st.session_state.in_area_logs = []
 
     # Add markers to the map
     for coord in gps_coords:
@@ -288,6 +293,22 @@ def plot_gps_coords(gps_coords):
                     # point is in the area
                     is_coord_in_area = True
                     break
+
+        # Track entry/exit times
+        if is_coord_in_area and not prev_in_area:
+            # Boat entered area
+            current_entry_time = coord["created_at"]
+        elif not is_coord_in_area and prev_in_area and current_entry_time:
+            # Boat exited area
+            duration = coord["created_at"] - current_entry_time
+            st.session_state.in_area_logs.append({
+                "entry_time": current_entry_time,
+                "exit_time": coord["created_at"],
+                "duration_minutes": duration.total_seconds() / 60
+            })
+            current_entry_time = None
+
+        prev_in_area = is_coord_in_area
 
         popup_content = f"""
         <div style="width: 200px;">
@@ -317,6 +338,17 @@ def plot_gps_coords(gps_coords):
 
         # Add the coordinates to make polyline
         polyline_coords.append([coord["lat"], coord["lng"]])
+
+    # If still in area at end of gps_coords
+    if prev_in_area and current_entry_time and gps_coords:
+        duration = gps_coords[-1]["created_at"] - current_entry_time
+        st.session_state.in_area_logs.append({
+            "entry_time": current_entry_time,
+            "exit_time": gps_coords[-1]["created_at"],
+            "duration_minutes": duration.total_seconds() / 60
+        })
+
+
 
     # Add a PolyLine to connect the points
     if gps_coords:
@@ -459,3 +491,15 @@ if st.button("ดึงข้อมูล") and filter_boat and filter_date_rang
 m = plot_gps_coords(st.session_state.gps_coords)
 st_folium(m, width=800, height=600)
 display_gps_coords()
+
+if st.session_state.in_area_logs:
+    st.subheader("บันทึกการเข้า-ออกเขต")
+    logs_df = pd.DataFrame(st.session_state.in_area_logs)
+    logs_df["duration_minutes"] = logs_df["duration_minutes"].round(2)
+    st.dataframe(
+        data=logs_df,
+        column_order=["entry_time", "exit_time", "duration_minutes"]
+    )
+    
+    total_duration = sum(log["duration_minutes"] for log in st.session_state.in_area_logs)
+    st.write(f"เวลารวมที่อยู่ในเขตทั้งหมด: {total_duration:.2f} นาที")
