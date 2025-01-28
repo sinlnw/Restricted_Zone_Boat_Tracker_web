@@ -5,6 +5,7 @@ import pymongo
 import folium
 from streamlit_folium import st_folium
 from folium import IFrame
+from folium.plugins import PolyLineTextPath
 import pandas as pd
 
 MONGODB_DB_NAME='test'
@@ -352,11 +353,20 @@ def plot_gps_coords(gps_coords):
 
     # Add a PolyLine to connect the points
     if gps_coords:
-        folium.PolyLine(
+        line = folium.PolyLine(
             locations=polyline_coords,
             color="blue",
             weight=2.5,
             opacity=1,
+        ).add_to(m)
+
+        PolyLineTextPath(
+            line,
+            '>',      # Arrow character , ► ,▻
+            repeat=True,
+            center=True,
+            offset=5,  
+            attributes={'fill': '#000000', 'font-size': '14'}
         ).add_to(m)
 
     return m
