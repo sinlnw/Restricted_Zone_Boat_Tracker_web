@@ -193,7 +193,7 @@ def init_connection():
 
 # Pull data from the collection.
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=60)
 def get_data(filter_date_range: tuple[datetime], device: str):
     start_date, end_date = filter_date_range
     db = client[MONGODB_DB_NAME]
