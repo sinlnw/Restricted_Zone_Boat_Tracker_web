@@ -362,7 +362,7 @@ def plot_gps_coords(gps_coords):
 
         PolyLineTextPath(
             line,
-            '>',      # Arrow character , ► ,▻
+            '►          ',      # Arrow character , ► , ▻ , > , ▶
             repeat=True,
             center=True,
             offset=5,  
