@@ -368,7 +368,8 @@ def plot_gps_coords(gps_coords):
             offset=5,  
             attributes={'fill': '#000000', 'font-size': '14'}
         ).add_to(m)
-
+    
+    m.fit_bounds(m.get_bounds())
     return m
 
 
