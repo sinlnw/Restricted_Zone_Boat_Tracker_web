@@ -425,7 +425,7 @@ client = init_connection()
 if st.button("นำเข้าข้อมูลเขต"):
     upload_file()
 
-display_areas_data()
+
 
 
 col1, col2 = st.columns([0.2, 0.8])
@@ -514,3 +514,5 @@ if st.session_state.in_area_logs:
     
     total_duration = sum(log["duration_minutes"] for log in st.session_state.in_area_logs)
     st.write(f"เวลารวมที่อยู่ในเขตทั้งหมด: {total_duration:.2f} นาที")
+
+display_areas_data()
